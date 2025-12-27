@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, text
 
-engine = create_engine('mysql+pymysql://root:1234@localhost:3306/BEYOND')
+engine = create_engine('mysql+pymysql://root:test%40123@localhost:3306/BEYOND')
 
 with engine.connect() as conn:
     result = conn.execute(text('SELECT id, name, uom, energy_uom FROM commodities LIMIT 5'))

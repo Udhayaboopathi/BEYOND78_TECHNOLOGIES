@@ -9,7 +9,7 @@ load_dotenv()
 # Database configuration
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "mysql+pymysql://root:password@localhost:3306/your_database"
+    "mysql+pymysql://root:test%40123@localhost:3306/BEYOND"
 )
 
 engine = create_engine(DATABASE_URL)

@@ -1,0 +1,8 @@
+LegalName,ShortName,CounterpartyCode,Country,Type,CreditStatus,CreditLimit
+Shell International Trading Ltd,Shell,SHELL001,Netherlands,Supplier,Approved,5000000.00
+ExxonMobil Corporation,Exxon,EXXON001,USA,Supplier,Approved,10000000.00
+BP Trading Limited,BP,BP001,UK,Buyer,Approved,7500000.00
+TotalEnergies SE,Total,TOTAL001,France,Both,Approved,8000000.00
+Chevron Corporation,Chevron,CHEV001,USA,Supplier,Under Review,6000000.00
+Saudi Aramco,Aramco,ARAMCO001,Saudi Arabia,Supplier,Approved,15000000.00
+Gazprom Export LLC,Gazprom,GAZP001,Russia,Supplier,Suspended,0.00

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime, date
 from typing import Optional
 
@@ -68,6 +68,8 @@ class CommodityUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 class Commodity(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     name: str
     description: str
@@ -76,9 +78,6 @@ class Commodity(BaseModel):
     energy_uom: str
     create_at: datetime
     update_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 # UOM schemas
 class UOMCreate(BaseModel):
@@ -94,14 +93,13 @@ class UOMUpdate(BaseModel):
     description: Optional[str] = None
 
 class UOM(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     name: str
     type: str
     base_uom: str
     description: str
-    
-    class Config:
-        from_attributes = True
 
 # Blend schemas
 class BlendCreate(BaseModel):
@@ -115,14 +113,13 @@ class BlendUpdate(BaseModel):
     commodity_id: Optional[int] = None
 
 class Blend(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     name: str
     description: str
     commodity_id: int
     commodity: Optional[CommodityNested] = None
-    
-    class Config:
-        from_attributes = True
 
 # BlendComponent schemas
 class BlendComponentCreate(BaseModel):
@@ -136,15 +133,14 @@ class BlendComponentUpdate(BaseModel):
     proportion: Optional[float] = None
 
 class BlendComponent(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     blend_id: int
     commodity_id: int
     proportion: float
     blend: Optional[BlendNested] = None
     commodity: Optional[CommodityNested] = None
-    
-    class Config:
-        from_attributes = True
 
 # CounterParty schemas
 class CounterPartyCreate(BaseModel):
@@ -166,6 +162,8 @@ class CounterPartyUpdate(BaseModel):
     CreditLimit: Optional[float] = None
 
 class CounterParty(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     CounterpartyID: int
     LegalName: str
     ShortName: str
@@ -176,9 +174,6 @@ class CounterParty(BaseModel):
     CreditLimit: float
     CreatedAt: datetime
     UpdatedAt: datetime
-    
-    class Config:
-        from_attributes = True
 
 # Location schemas
 class LocationCreate(BaseModel):
@@ -194,15 +189,14 @@ class LocationUpdate(BaseModel):
     parent_contvarcharerpartu_id: Optional[int] = None
 
 class Location(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     name: str
     type: str
     description: str
     parent_contvarcharerpartu_id: int
     counter_party: Optional[CounterPartyNested] = None
-    
-    class Config:
-        from_attributes = True
 
 # Capacity schemas
 class CapacityCreate(BaseModel):
@@ -222,6 +216,8 @@ class CapacityUpdate(BaseModel):
     eff_dt_to: Optional[date] = None
 
 class Capacity(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     commodity_id: int
     location_id: int
@@ -233,6 +229,3 @@ class Capacity(BaseModel):
     commodity: Optional[CommodityNested] = None
     location: Optional[LocationNested] = None
     uom: Optional[UOMNested] = None
-    
-    class Config:
-        from_attributes = True
