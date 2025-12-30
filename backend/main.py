@@ -1171,19 +1171,17 @@ def export_uoms(db: Session = Depends(get_db)):
 @app.get("/api/export/locations")
 def export_locations(db: Session = Depends(get_db)):
     """
-    Export locations with parent location and counter party names
+    Export locations with counter party names
     """
     query = text("""
         SELECT 
             l.name AS 'Location Name',
             l.type AS 'Type',
             l.description AS 'Description',
-            pl.name AS 'Parent Location',
             cp.LegalName AS 'Counter Party Legal Name',
             cp.ShortName AS 'Counter Party Short Name'
         FROM location l
-        LEFT JOIN location pl ON l.parent_location_id = pl.id
-        LEFT JOIN counter_parties cp ON l.counterparty_id = cp.id
+        LEFT JOIN counter_parties cp ON l.parent_contvarcharerpartu_id = cp.CounterpartyID
         WHERE l.delete = 0x00000000000000000000000000000000
         ORDER BY l.name
     """)

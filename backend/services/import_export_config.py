@@ -222,7 +222,7 @@ ENTITY_CONFIGS: Dict[str, EntityConfig] = {
     
     "blend_components": EntityConfig(
         entity_name="Blend Components",
-        table_name="blendcomponents",
+        table_name="blendComponents",
         unique_key=["blend_id", "commodity_id"],
         supports_update=False,  # Delete and recreate instead
         columns=[
@@ -326,7 +326,7 @@ ENTITY_CONFIGS: Dict[str, EntityConfig] = {
             ),
             ColumnConfig(
                 name="Base Commodity Name",
-                field="base_commodity_id",
+                field="commodity_id",
                 required=True,
                 data_type="string",
                 foreign_key="commodities",
