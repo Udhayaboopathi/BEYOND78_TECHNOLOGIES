@@ -245,7 +245,7 @@ class ImportService:
         query = text(f"""
             SELECT {primary_key} FROM {fk_table}
             WHERE {lookup_field} = :lookup_value
-            AND `delete` = 0x00000000000000000000000000000000
+            AND is_deleted = 0
             LIMIT 1
         """)
         
@@ -325,7 +325,7 @@ class ImportService:
         query = text(f"""
             SELECT {pk_column} FROM {self.config.table_name}
             WHERE {' AND '.join(conditions)}
-            AND `delete` = 0x00000000000000000000000000000000
+            AND is_deleted = 0
             LIMIT 1
         """)
         
@@ -334,8 +334,8 @@ class ImportService:
     
     def _create_record(self, row_data: Dict[str, Any]):
         """Create new record"""
-        # Add auto-populated fields (only delete flag is universal)
-        row_data['delete'] = bytes.fromhex('00' * 16)
+        # Add auto-populated fields for soft delete
+        row_data['is_deleted'] = False
         
         # Build INSERT query - escape column names with backticks
         columns = ', '.join([f"`{key}`" for key in row_data.keys()])

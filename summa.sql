@@ -1,93 +1,134 @@
-USE BEYOND;
+/* =========================================================
+   DATABASE
+========================================================= */
+DROP DATABASE IF EXISTS beyond;
+CREATE DATABASE beyond;
+USE beyond;
 
-CREATE TABLE `commodities`(
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `description` TEXT NOT NULL,
-    `uom` VARCHAR(255) NOT NULL,
-    `density` FLOAT(53) NOT NULL,
-    `energy_uom` VARCHAR(255) NOT NULL,
-    `is_active` BINARY(16) NOT NULL,
-    `create_at` DATETIME NOT NULL,
-    `update_at` DATETIME NOT NULL,
-    `delete_at` DATETIME NULL,
-    `delete` BINARY(16) NOT NULL
-);
-ALTER TABLE `commodities` ADD UNIQUE `commodities_name_unique`(`name`);
-
-CREATE TABLE `uoms`(
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `type` VARCHAR(255) NOT NULL,
-    `base_uom` VARCHAR(255) NOT NULL,
-    `description` VARCHAR(255) NOT NULL,
-    `delete_at` DATETIME NULL,
-    `delete` BINARY(16) NOT NULL
-);
-ALTER TABLE `uoms` ADD UNIQUE `uoms_name_unique`(`name`);
-
-CREATE TABLE `blends`(
-    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `description` VARCHAR(255) NOT NULL,
-    `commodity_id` INT UNSIGNED NOT NULL,
-    `delete_at` DATETIME NULL,
-    `delete` BINARY(16) NOT NULL
-);
-ALTER TABLE `blends` ADD UNIQUE `blends_name_unique`(`name`);
-
-CREATE TABLE `blendComponents`(
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `blend_id` BIGINT UNSIGNED NOT NULL,
-    `commodity_id` INT UNSIGNED NOT NULL,
-    `proportion` DECIMAL(10, 6) NOT NULL,
-    `delete_at` DATETIME NULL,
-    `delete` BINARY(16) NOT NULL
+/* =========================================================
+   UOMS
+========================================================= */
+CREATE TABLE uoms (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    base_uom VARCHAR(50) NOT NULL,
+    description VARCHAR(255),
+    deleted_at DATETIME NULL,
+    is_deleted BOOLEAN DEFAULT 0,
+    UNIQUE KEY uoms_name_unique (name)
 );
 
-CREATE TABLE `location`(
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name` VARCHAR(255) NOT NULL,
-    `type` VARCHAR(255) NOT NULL,
-    `description` VARCHAR(255) NOT NULL,
-    `parent_contvarcharerpartu_id` INT UNSIGNED NOT NULL,
-    `delete_at` DATETIME NULL,
-    `delete` BINARY(16) NOT NULL
+/* =========================================================
+   COMMODITIES
+========================================================= */
+CREATE TABLE commodities (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    uom_id INT UNSIGNED NOT NULL,
+    density FLOAT NOT NULL,
+    energy_uom VARCHAR(50),
+    is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME NULL,
+    is_deleted BOOLEAN DEFAULT 0,
+    UNIQUE KEY commodities_name_unique (name),
+    CONSTRAINT commodities_uom_fk 
+        FOREIGN KEY (uom_id) REFERENCES uoms(id)
 );
 
-CREATE TABLE `counter_parties`(
-    `CounterpartyID` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `LegalName` VARCHAR(255) NOT NULL,
-    `ShortName` VARCHAR(255) NOT NULL,
-    `CounterpartyCode` VARCHAR(255) NOT NULL,
-    `Country` VARCHAR(255) NOT NULL,
-    `Type` VARCHAR(255) NOT NULL,
-    `CreditStatus` VARCHAR(255) NOT NULL,
-    `CreditLimit` DECIMAL(15, 2) NOT NULL,
-    `CreatedAt` DATETIME NOT NULL,
-    `UpdatedAt` DATETIME NOT NULL,
-    `delete_at` DATETIME NULL,
-    `delete` BINARY(16) NOT NULL
-);
-ALTER TABLE `counter_parties` ADD UNIQUE `counter_parties_legalname_unique`(`LegalName`);
-
-CREATE TABLE `capacity`(
-    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `commodity_id` INT UNSIGNED NOT NULL,
-    `location_id` INT UNSIGNED NOT NULL,
-    `quantity` DECIMAL(15, 4) NOT NULL,
-    `uom_id` INT UNSIGNED NOT NULL,
-    `eff_dt_from` DATE NOT NULL,
-    `eff_dt_to` DATE NOT NULL,
-    `dt_last_modified` DATE NOT NULL,
-    `delete_at` DATETIME NULL,
-    `delete` BINARY(16) NOT NULL
+/* =========================================================
+   COUNTER PARTIES
+========================================================= */
+CREATE TABLE counter_parties (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    legal_name VARCHAR(255) NOT NULL,
+    short_name VARCHAR(255),
+    counterparty_code VARCHAR(100),
+    country VARCHAR(100),
+    type VARCHAR(50),
+    credit_status VARCHAR(50),
+    credit_limit DECIMAL(15,2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME NULL,
+    is_deleted BOOLEAN DEFAULT 0,
+    UNIQUE KEY counter_parties_legalname_unique (legal_name)
 );
 
-ALTER TABLE `location` ADD CONSTRAINT `location_parent_contvarcharerpartu_id_foreign` FOREIGN KEY(`parent_contvarcharerpartu_id`) REFERENCES `counter_parties`(`CounterpartyID`);
-ALTER TABLE `capacity` ADD CONSTRAINT `capacity_uom_id_foreign` FOREIGN KEY(`uom_id`) REFERENCES `uoms`(`id`);
-ALTER TABLE `blendComponents` ADD CONSTRAINT `blendcomponents_blend_id_foreign` FOREIGN KEY(`blend_id`) REFERENCES `blends`(`id`);
-ALTER TABLE `blends` ADD CONSTRAINT `blends_commodity_id_foreign` FOREIGN KEY(`commodity_id`) REFERENCES `commodities`(`id`);
-ALTER TABLE `capacity` ADD CONSTRAINT `capacity_commodity_id_foreign` FOREIGN KEY(`commodity_id`) REFERENCES `commodities`(`id`);
-ALTER TABLE `commodities` ADD CONSTRAINT `commodities_uom_foreign` FOREIGN KEY(`uom`) REFERENCES `uoms`(`name`);
-ALTER TABLE `capacity` ADD CONSTRAINT `capacity_location_id_foreign` FOREIGN KEY(`location_id`) REFERENCES `location`(`id`);
+/* =========================================================
+   LOCATIONS (HIERARCHICAL)
+========================================================= */
+CREATE TABLE locations (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(50),
+    description VARCHAR(255),
+    parent_location_id INT UNSIGNED NULL,
+    counterparty_id INT UNSIGNED NOT NULL,
+    deleted_at DATETIME NULL,
+    is_deleted BOOLEAN DEFAULT 0,
+    CONSTRAINT locations_parent_fk 
+        FOREIGN KEY (parent_location_id) REFERENCES locations(id),
+    CONSTRAINT locations_counterparty_fk 
+        FOREIGN KEY (counterparty_id) REFERENCES counter_parties(id)
+);
+
+/* =========================================================
+   BLENDS
+========================================================= */
+CREATE TABLE blends (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description VARCHAR(255),
+    base_commodity_id INT UNSIGNED NOT NULL,
+    deleted_at DATETIME NULL,
+    is_deleted BOOLEAN DEFAULT 0,
+    UNIQUE KEY blends_name_unique (name),
+    CONSTRAINT blends_commodity_fk 
+        FOREIGN KEY (base_commodity_id) REFERENCES commodities(id)
+);
+
+/* =========================================================
+   BLEND COMPONENTS
+========================================================= */
+CREATE TABLE blend_components (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    blend_id BIGINT UNSIGNED NOT NULL,
+    commodity_id INT UNSIGNED NOT NULL,
+    proportion DECIMAL(10,6) NOT NULL,
+    deleted_at DATETIME NULL,
+    is_deleted BOOLEAN DEFAULT 0,
+    CONSTRAINT blend_components_blend_fk 
+        FOREIGN KEY (blend_id) REFERENCES blends(id),
+    CONSTRAINT blend_components_commodity_fk 
+        FOREIGN KEY (commodity_id) REFERENCES commodities(id),
+    UNIQUE KEY uq_blend_commodity (blend_id, commodity_id)
+);
+
+/* =========================================================
+   CAPACITY
+========================================================= */
+CREATE TABLE capacity (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    commodity_id INT UNSIGNED NOT NULL,
+    location_id INT UNSIGNED NOT NULL,
+    quantity DECIMAL(15,4) NOT NULL,
+    uom_id INT UNSIGNED NOT NULL,
+    eff_dt_from DATE NOT NULL,
+    eff_dt_to DATE NOT NULL,
+    sys_config JSON NULL,
+    last_modified DATETIME 
+        DEFAULT CURRENT_TIMESTAMP 
+        ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME NULL,
+    is_deleted BOOLEAN DEFAULT 0,
+    CONSTRAINT capacity_commodity_fk 
+        FOREIGN KEY (commodity_id) REFERENCES commodities(id),
+    CONSTRAINT capacity_location_fk 
+        FOREIGN KEY (location_id) REFERENCES locations(id),
+    CONSTRAINT capacity_uom_fk 
+        FOREIGN KEY (uom_id) REFERENCES uoms(id)
+);

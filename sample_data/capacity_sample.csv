@@ -1,8 +1,0 @@
-Commodity Name,Location Name,UOM,Quantity,Effective From,Effective To
-Crude Oil,Rotterdam Terminal,Barrel,1000000.00,2024-01-01,2024-12-31
-Natural Gas,Nord Stream Facility,Cubic Meter,5000000.00,2024-01-01,2024-06-30
-Diesel,Houston Refinery,Liter,750000.00,2024-01-01,2024-12-31
-LNG,Singapore Hub,Metric Ton,250000.00,2024-03-01,2024-12-31
-Gasoline,Marseille Terminal,Liter,500000.00,2024-01-01,2024-12-31
-Crude Oil,Ras Tanura Port,Barrel,10000000.00,2024-01-01,2025-12-31
-Jet Fuel,Singapore Hub,Liter,300000.00,2024-06-01,2024-12-31

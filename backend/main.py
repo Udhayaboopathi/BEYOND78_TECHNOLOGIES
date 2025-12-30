@@ -37,7 +37,7 @@ def get_commodity_details(commodity_id: int, db: Session = Depends(get_db)):
     """Fetch complete commodity details with UOM information for auto-population"""
     commodity = db.query(models.Commodity).filter(
         models.Commodity.id == commodity_id,
-        models.Commodity.delete == b'\x00' * 16
+        models.Commodity.is_deleted == False
     ).first()
     
     if not commodity:
@@ -73,7 +73,7 @@ def get_location_details(location_id: int, db: Session = Depends(get_db)):
         joinedload(models.Location.counter_party)
     ).filter(
         models.Location.id == location_id,
-        models.Location.delete == b'\x00' * 16
+        models.Location.is_deleted == False
     ).first()
     
     if not location:
@@ -111,7 +111,7 @@ def validate_capacity(capacity_data: schemas.CapacityCreate, db: Session = Depen
     overlapping = db.query(models.Capacity).filter(
         models.Capacity.commodity_id == capacity_data.commodity_id,
         models.Capacity.location_id == capacity_data.location_id,
-        models.Capacity.delete == b'\x00' * 16,
+        models.Capacity.is_deleted == False,
         models.Capacity.eff_dt_from <= capacity_data.eff_dt_to,
         models.Capacity.eff_dt_to >= capacity_data.eff_dt_from
     ).first()
@@ -129,7 +129,7 @@ def validate_blend_proportion(blend_id: int, db: Session = Depends(get_db)):
     """Validate that blend component proportions sum to 100%"""
     components = db.query(models.BlendComponent).filter(
         models.BlendComponent.blend_id == blend_id,
-        models.BlendComponent.delete == b'\x00' * 16
+        models.BlendComponent.is_deleted == False
     ).all()
     
     total = sum(float(c.proportion) for c in components)
@@ -143,12 +143,12 @@ def validate_blend_proportion(blend_id: int, db: Session = Depends(get_db)):
 # ============== Commodities endpoints ==============
 @app.get("/api/commodities", response_model=List[schemas.Commodity])
 def get_commodities(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    commodities = db.query(models.Commodity).filter(models.Commodity.delete == b'\x00' * 16).offset(skip).limit(limit).all()
+    commodities = db.query(models.Commodity).options(joinedload(models.Commodity.uom)).filter(models.Commodity.is_deleted == False).offset(skip).limit(limit).all()
     return commodities
 
 @app.get("/api/commodities/{commodity_id}", response_model=schemas.Commodity)
 def get_commodity(commodity_id: int, db: Session = Depends(get_db)):
-    commodity = db.query(models.Commodity).filter(models.Commodity.id == commodity_id, models.Commodity.delete == b'\x00' * 16).first()
+    commodity = db.query(models.Commodity).options(joinedload(models.Commodity.uom)).filter(models.Commodity.id == commodity_id, models.Commodity.is_deleted == False).first()
     if not commodity:
         raise HTTPException(status_code=404, detail="Commodity not found")
     return commodity
@@ -158,10 +158,10 @@ def create_commodity(commodity: schemas.CommodityCreate, db: Session = Depends(g
     try:
         db_commodity = models.Commodity(
             **commodity.model_dump(exclude={'is_active'}),
-            is_active=b'\x01' + b'\x00' * 15 if commodity.is_active else b'\x00' * 16,
-            create_at=datetime.now(),
-            update_at=datetime.now(),
-            delete=b'\x00' * 16
+            is_active=commodity.is_active,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            is_deleted=False
         )
         db.add(db_commodity)
         db.commit()
@@ -185,8 +185,8 @@ def update_commodity(commodity_id: int, commodity: schemas.CommodityUpdate, db: 
     
     update_data = commodity.model_dump(exclude_unset=True)
     if 'is_active' in update_data:
-        update_data['is_active'] = b'\x01' + b'\x00' * 15 if update_data['is_active'] else b'\x00' * 16
-    update_data['update_at'] = datetime.now()
+        update_data['is_active'] = update_data['is_active']
+    update_data['updated_at'] = datetime.now()
     
     for key, value in update_data.items():
         setattr(db_commodity, key, value)
@@ -201,27 +201,27 @@ def delete_commodity(commodity_id: int, db: Session = Depends(get_db)):
     if not db_commodity:
         raise HTTPException(status_code=404, detail="Commodity not found")
     
-    db_commodity.delete = b'\x01' + b'\x00' * 15
-    db_commodity.delete_at = datetime.now()
+    db_commodity.is_deleted = True
+    db_commodity.deleted_at = datetime.utcnow()
     db.commit()
     return {"message": "Commodity deleted successfully"}
 
 # ============== UOMs endpoints ==============
 @app.get("/api/uoms", response_model=List[schemas.UOM])
 def get_uoms(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    uoms = db.query(models.UOM).filter(models.UOM.delete == b'\x00' * 16).offset(skip).limit(limit).all()
+    uoms = db.query(models.UOM).filter(models.UOM.is_deleted == False).offset(skip).limit(limit).all()
     return uoms
 
 @app.get("/api/uoms/{uom_id}", response_model=schemas.UOM)
 def get_uom(uom_id: int, db: Session = Depends(get_db)):
-    uom = db.query(models.UOM).filter(models.UOM.id == uom_id, models.UOM.delete == b'\x00' * 16).first()
+    uom = db.query(models.UOM).filter(models.UOM.id == uom_id, models.UOM.is_deleted == False).first()
     if not uom:
         raise HTTPException(status_code=404, detail="UOM not found")
     return uom
 
 @app.post("/api/uoms", response_model=schemas.UOM)
 def create_uom(uom: schemas.UOMCreate, db: Session = Depends(get_db)):
-    db_uom = models.UOM(**uom.model_dump(), delete=b'\x00' * 16)
+    db_uom = models.UOM(**uom.model_dump(), is_deleted=False)
     db.add(db_uom)
     db.commit()
     db.refresh(db_uom)
@@ -247,27 +247,27 @@ def delete_uom(uom_id: int, db: Session = Depends(get_db)):
     if not db_uom:
         raise HTTPException(status_code=404, detail="UOM not found")
     
-    db_uom.delete = b'\x01' + b'\x00' * 15
-    db_uom.delete_at = datetime.now()
+    db_uom.is_deleted = True
+    db_uom.deleted_at = datetime.utcnow()
     db.commit()
     return {"message": "UOM deleted successfully"}
 
 # ============== Blends endpoints ==============
 @app.get("/api/blends", response_model=List[schemas.Blend])
 def get_blends(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    blends = db.query(models.Blend).options(joinedload(models.Blend.commodity)).filter(models.Blend.delete == b'\x00' * 16).offset(skip).limit(limit).all()
+    blends = db.query(models.Blend).options(joinedload(models.Blend.commodity)).filter(models.Blend.is_deleted == False).offset(skip).limit(limit).all()
     return blends
 
 @app.get("/api/blends/{blend_id}", response_model=schemas.Blend)
 def get_blend(blend_id: int, db: Session = Depends(get_db)):
-    blend = db.query(models.Blend).options(joinedload(models.Blend.commodity)).filter(models.Blend.id == blend_id, models.Blend.delete == b'\x00' * 16).first()
+    blend = db.query(models.Blend).options(joinedload(models.Blend.commodity)).filter(models.Blend.id == blend_id, models.Blend.is_deleted == False).first()
     if not blend:
         raise HTTPException(status_code=404, detail="Blend not found")
     return blend
 
 @app.post("/api/blends", response_model=schemas.Blend)
 def create_blend(blend: schemas.BlendCreate, db: Session = Depends(get_db)):
-    db_blend = models.Blend(**blend.model_dump(), delete=b'\x00' * 16)
+    db_blend = models.Blend(**blend.model_dump(), is_deleted=False)
     db.add(db_blend)
     db.commit()
     db.refresh(db_blend)
@@ -293,8 +293,8 @@ def delete_blend(blend_id: int, db: Session = Depends(get_db)):
     if not db_blend:
         raise HTTPException(status_code=404, detail="Blend not found")
     
-    db_blend.delete = b'\x01' + b'\x00' * 15
-    db_blend.delete_at = datetime.now()
+    db_blend.is_deleted = True
+    db_blend.deleted_at = datetime.utcnow()
     db.commit()
     return {"message": "Blend deleted successfully"}
 
@@ -419,7 +419,7 @@ def create_blend_with_components(data: schemas.CreateBlendWithComponents, db: Se
 # ============== Blend Components endpoints ==============
 @app.get("/api/blend-components", response_model=List[schemas.BlendComponent])
 def get_blend_components(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    components = db.query(models.BlendComponent).options(joinedload(models.BlendComponent.blend), joinedload(models.BlendComponent.commodity)).filter(models.BlendComponent.delete == b'\x00' * 16).offset(skip).limit(limit).all()
+    components = db.query(models.BlendComponent).options(joinedload(models.BlendComponent.blend), joinedload(models.BlendComponent.commodity)).filter(models.BlendComponent.is_deleted == False).offset(skip).limit(limit).all()
     return components
 
 @app.get("/api/blend-components/{component_id}", response_model=schemas.BlendComponent)
@@ -435,7 +435,7 @@ def create_blend_component(component: schemas.BlendComponentCreate, db: Session 
     existing = db.query(models.BlendComponent).filter(
         models.BlendComponent.blend_id == component.blend_id,
         models.BlendComponent.commodity_id == component.commodity_id,
-        models.BlendComponent.delete == b'\x00' * 16
+        models.BlendComponent.is_deleted == False
     ).first()
     
     if existing:
@@ -444,7 +444,7 @@ def create_blend_component(component: schemas.BlendComponentCreate, db: Session 
             detail="This commodity already exists in this blend"
         )
     
-    db_component = models.BlendComponent(**component.model_dump(), delete=b'\x00' * 16)
+    db_component = models.BlendComponent(**component.model_dump(), is_deleted=False)
     db.add(db_component)
     db.commit()
     db.refresh(db_component)
@@ -470,27 +470,27 @@ def delete_blend_component(component_id: int, db: Session = Depends(get_db)):
     if not db_component:
         raise HTTPException(status_code=404, detail="Blend Component not found")
     
-    db_component.delete = b'\x01' + b'\x00' * 15
-    db_component.delete_at = datetime.now()
+    db_component.is_deleted = True
+    db_component.deleted_at = datetime.now()
     db.commit()
     return {"message": "Blend Component deleted successfully"}
 
 # ============== Locations endpoints ==============
 @app.get("/api/locations", response_model=List[schemas.Location])
 def get_locations(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    locations = db.query(models.Location).options(joinedload(models.Location.counter_party)).filter(models.Location.delete == b'\x00' * 16).offset(skip).limit(limit).all()
+    locations = db.query(models.Location).options(joinedload(models.Location.counter_party)).filter(models.Location.is_deleted == False).offset(skip).limit(limit).all()
     return locations
 
 @app.get("/api/locations/{location_id}", response_model=schemas.Location)
 def get_location(location_id: int, db: Session = Depends(get_db)):
-    location = db.query(models.Location).filter(models.Location.id == location_id, models.Location.delete == b'\x00' * 16).first()
+    location = db.query(models.Location).filter(models.Location.id == location_id, models.Location.is_deleted == False).first()
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
     return location
 
 @app.post("/api/locations", response_model=schemas.Location)
 def create_location(location: schemas.LocationCreate, db: Session = Depends(get_db)):
-    db_location = models.Location(**location.model_dump(), delete=b'\x00' * 16)
+    db_location = models.Location(**location.model_dump(), is_deleted=False)
     db.add(db_location)
     db.commit()
     db.refresh(db_location)
@@ -516,20 +516,20 @@ def delete_location(location_id: int, db: Session = Depends(get_db)):
     if not db_location:
         raise HTTPException(status_code=404, detail="Location not found")
     
-    db_location.delete = b'\x01' + b'\x00' * 15
-    db_location.delete_at = datetime.now()
+    db_location.is_deleted = True
+    db_location.deleted_at = datetime.now()
     db.commit()
     return {"message": "Location deleted successfully"}
 
 # ============== Counter Parties endpoints ==============
 @app.get("/api/counter-parties", response_model=List[schemas.CounterParty])
 def get_counter_parties(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    parties = db.query(models.CounterParty).filter(models.CounterParty.delete == b'\x00' * 16).offset(skip).limit(limit).all()
+    parties = db.query(models.CounterParty).filter(models.CounterParty.is_deleted == False).offset(skip).limit(limit).all()
     return parties
 
 @app.get("/api/counter-parties/{party_id}", response_model=schemas.CounterParty)
 def get_counter_party(party_id: int, db: Session = Depends(get_db)):
-    party = db.query(models.CounterParty).filter(models.CounterParty.CounterpartyID == party_id, models.CounterParty.delete == b'\x00' * 16).first()
+    party = db.query(models.CounterParty).filter(models.CounterParty.id == party_id, models.CounterParty.is_deleted == False).first()
     if not party:
         raise HTTPException(status_code=404, detail="Counter Party not found")
     return party
@@ -539,9 +539,9 @@ def create_counter_party(party: schemas.CounterPartyCreate, db: Session = Depend
     try:
         db_party = models.CounterParty(
             **party.model_dump(),
-            CreatedAt=datetime.now(),
-            UpdatedAt=datetime.now(),
-            delete=b'\x00' * 16
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            is_deleted=False
         )
         db.add(db_party)
         db.commit()
@@ -551,9 +551,9 @@ def create_counter_party(party: schemas.CounterPartyCreate, db: Session = Depend
         db.rollback()
         error_msg = str(e)
         if "Duplicate entry" in error_msg:
-            if "counter_parties_legalname_unique" in error_msg or "LegalName" in error_msg:
+            if "counter_parties_legalname_unique" in error_msg or "legal_name" in error_msg:
                 raise HTTPException(status_code=400, detail="A counter party with this legal name already exists.")
-            elif "CounterpartyCode" in error_msg:
+            elif "counterparty_code" in error_msg:
                 raise HTTPException(status_code=400, detail="A counter party with this code already exists.")
             else:
                 raise HTTPException(status_code=400, detail="A counter party with these details already exists.")
@@ -562,12 +562,12 @@ def create_counter_party(party: schemas.CounterPartyCreate, db: Session = Depend
 
 @app.put("/api/counter-parties/{party_id}", response_model=schemas.CounterParty)
 def update_counter_party(party_id: int, party: schemas.CounterPartyUpdate, db: Session = Depends(get_db)):
-    db_party = db.query(models.CounterParty).filter(models.CounterParty.CounterpartyID == party_id).first()
+    db_party = db.query(models.CounterParty).filter(models.CounterParty.id == party_id).first()
     if not db_party:
         raise HTTPException(status_code=404, detail="Counter Party not found")
     
     update_data = party.model_dump(exclude_unset=True)
-    update_data['UpdatedAt'] = datetime.now()
+    update_data['updated_at'] = datetime.now()
     
     for key, value in update_data.items():
         setattr(db_party, key, value)
@@ -578,12 +578,12 @@ def update_counter_party(party_id: int, party: schemas.CounterPartyUpdate, db: S
 
 @app.delete("/api/counter-parties/{party_id}")
 def delete_counter_party(party_id: int, db: Session = Depends(get_db)):
-    db_party = db.query(models.CounterParty).filter(models.CounterParty.CounterpartyID == party_id).first()
+    db_party = db.query(models.CounterParty).filter(models.CounterParty.id == party_id).first()
     if not db_party:
         raise HTTPException(status_code=404, detail="Counter Party not found")
     
-    db_party.delete = b'\x01' + b'\x00' * 15
-    db_party.delete_at = datetime.now()
+    db_party.is_deleted = True
+    db_party.deleted_at = datetime.now()
     db.commit()
     return {"message": "Counter Party deleted successfully"}
 
@@ -594,12 +594,12 @@ def get_capacity(skip: int = 0, limit: int = 100, db: Session = Depends(get_db))
         joinedload(models.Capacity.commodity),
         joinedload(models.Capacity.location),
         joinedload(models.Capacity.uom)
-    ).filter(models.Capacity.delete == b'\x00' * 16).offset(skip).limit(limit).all()
+    ).filter(models.Capacity.is_deleted == False).offset(skip).limit(limit).all()
     return capacity
 
 @app.get("/api/capacity/{capacity_id}", response_model=schemas.Capacity)
 def get_capacity_item(capacity_id: int, db: Session = Depends(get_db)):
-    capacity = db.query(models.Capacity).filter(models.Capacity.id == capacity_id, models.Capacity.delete == b'\x00' * 16).first()
+    capacity = db.query(models.Capacity).filter(models.Capacity.id == capacity_id, models.Capacity.is_deleted == False).first()
     if not capacity:
         raise HTTPException(status_code=404, detail="Capacity not found")
     return capacity
@@ -611,7 +611,7 @@ def create_capacity(capacity: schemas.CapacityCreate, db: Session = Depends(get_
         overlapping = db.query(models.Capacity).filter(
             models.Capacity.commodity_id == capacity.commodity_id,
             models.Capacity.location_id == capacity.location_id,
-            models.Capacity.delete == b'\x00' * 16,
+            models.Capacity.is_deleted == False,
             models.Capacity.eff_dt_from <= capacity.eff_dt_to,
             models.Capacity.eff_dt_to >= capacity.eff_dt_from
         ).first()
@@ -624,8 +624,8 @@ def create_capacity(capacity: schemas.CapacityCreate, db: Session = Depends(get_
         
         db_capacity = models.Capacity(
             **capacity.model_dump(),
-            dt_last_modified=datetime.now().date(),
-            delete=b'\x00' * 16
+            last_modified=datetime.now(),
+            is_deleted=False
         )
         db.add(db_capacity)
         db.commit()
@@ -644,7 +644,7 @@ def update_capacity(capacity_id: int, capacity: schemas.CapacityUpdate, db: Sess
         raise HTTPException(status_code=404, detail="Capacity not found")
     
     update_data = capacity.model_dump(exclude_unset=True)
-    update_data['dt_last_modified'] = datetime.now().date()
+    update_data['last_modified'] = datetime.now()
     
     for key, value in update_data.items():
         setattr(db_capacity, key, value)
@@ -659,8 +659,8 @@ def delete_capacity(capacity_id: int, db: Session = Depends(get_db)):
     if not db_capacity:
         raise HTTPException(status_code=404, detail="Capacity not found")
     
-    db_capacity.delete = b'\x01' + b'\x00' * 15
-    db_capacity.delete_at = datetime.now()
+    db_capacity.is_deleted = True
+    db_capacity.deleted_at = datetime.now()
     db.commit()
     return {"message": "Capacity deleted successfully"}
 

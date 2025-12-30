@@ -51,7 +51,7 @@ const Commodities: React.FC = () => {
   const [currentCommodity, setCurrentCommodity] = useState<CommodityFormData>({
     name: "",
     description: "",
-    uom: "",
+    uom_id: "",
     density: "",
     energy_uom: "",
     is_active: true,
@@ -92,7 +92,7 @@ const Commodities: React.FC = () => {
         id: commodity.id,
         name: commodity.name || "",
         description: commodity.description || "",
-        uom: commodity.uom || "",
+        uom_id: commodity.uom_id || "",
         density: commodity.density?.toString() || "",
         energy_uom: commodity.energy_uom || "",
         is_active: commodity.is_active ?? true,
@@ -102,7 +102,7 @@ const Commodities: React.FC = () => {
       setCurrentCommodity({
         name: "",
         description: "",
-        uom: "",
+        uom_id: "",
         density: "",
         energy_uom: "",
         is_active: true,
@@ -119,6 +119,9 @@ const Commodities: React.FC = () => {
     try {
       const commodityData = {
         ...currentCommodity,
+        uom_id: typeof currentCommodity.uom_id === 'string' 
+          ? parseInt(currentCommodity.uom_id) 
+          : currentCommodity.uom_id,
         density: typeof currentCommodity.density === 'string' 
           ? (currentCommodity.density ? parseFloat(currentCommodity.density) : undefined)
           : currentCommodity.density,
@@ -214,7 +217,7 @@ const Commodities: React.FC = () => {
                 <TableCell>{commodity.id}</TableCell>
                 <TableCell>{commodity.name}</TableCell>
                 <TableCell>{commodity.description}</TableCell>
-                <TableCell>{commodity.uom}</TableCell>
+                <TableCell>{commodity.uom?.name || commodity.uom_id}</TableCell>
                 <TableCell>{commodity.density}</TableCell>
                 <TableCell>{commodity.energy_uom}</TableCell>
                 <TableCell>{commodity.is_active ? "Yes" : "No"}</TableCell>
@@ -271,13 +274,13 @@ const Commodities: React.FC = () => {
           <FormControl fullWidth margin="normal" required>
             <InputLabel>UOM</InputLabel>
             <Select
-              name="uom"
-              value={currentCommodity.uom}
+              name="uom_id"
+              value={currentCommodity.uom_id.toString()}
               onChange={handleInputChange}
               label="UOM"
             >
               {uoms.map((uom) => (
-                <MenuItem key={uom.id} value={uom.name}>
+                <MenuItem key={uom.id} value={uom.id}>
                   {uom.name}
                 </MenuItem>
               ))}

@@ -5,7 +5,7 @@ export interface UOM {
   name: string;
   description?: string;
   type?: string;
-  base_conversion?: number;
+  base_uom?: number;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -15,12 +15,16 @@ export interface Commodity {
   id?: number;
   name: string;
   description?: string;
-  uom: string;
+  uom_id: number;
   density?: number;
   energy_uom?: string;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
+  uom?: {
+    id: number;
+    name: string;
+  };
 }
 
 export interface Location {
@@ -28,22 +32,22 @@ export interface Location {
   name: string;
   type: string;
   description: string;
-  parent_contvarcharerpartu_id: number;
+  counterparty_id: number;
   created_at?: string;
   updated_at?: string;
 }
 
 export interface CounterParty {
-  CounterpartyID: number;
-  LegalName: string;
-  ShortName: string;
-  CounterpartyCode: string;
-  Country: string;
-  Type: string;
-  CreditStatus: string;
-  CreditLimit: number;
-  CreatedAt?: string;
-  UpdatedAt?: string;
+  id: number;
+  legal_name: string;
+  short_name: string;
+  counterparty_code: string;
+  country: string;
+  type: string;
+  credit_status: string;
+  credit_limit: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Blend {
@@ -75,7 +79,7 @@ export interface Capacity {
   uom_id: number;
   eff_dt_from: string;
   eff_dt_to: string;
-  dt_last_modified?: string;
+  last_modified?: string;
   commodity?: Commodity;
   location?: Location;
   uom?: UOM;
@@ -107,14 +111,16 @@ export interface ImportResult {
 }
 
 export interface ApiError {
-  detail?: {
-    message?: string;
-    failed?: Array<{
-      row: number;
-      data: Record<string, any>;
-      error: string;
-    }>;
-  } | string;
+  detail?:
+    | {
+        message?: string;
+        failed?: Array<{
+          row: number;
+          data: Record<string, any>;
+          error: string;
+        }>;
+      }
+    | string;
 }
 
 // Props interfaces for components
@@ -147,7 +153,7 @@ export interface CommodityFormData {
   id?: number;
   name: string;
   description: string;
-  uom: string;
+  uom_id: number | string;
   density: string | number;
   energy_uom: string;
   is_active: boolean;
@@ -158,7 +164,7 @@ export interface UOMFormData {
   name: string;
   description: string;
   type: string;
-  base_conversion: string | number;
+  base_uom: string | number;
   is_active: boolean;
 }
 
@@ -175,18 +181,18 @@ export interface LocationFormData {
   name: string;
   type: string;
   description: string;
-  parent_contvarcharerpartu_id: number;
+  counterparty_id: number;
 }
 
 export interface CounterPartyFormData {
-  CounterpartyID?: number;
-  LegalName: string;
-  ShortName: string;
-  CounterpartyCode: string;
-  Country: string;
-  Type: string;
-  CreditStatus: string;
-  CreditLimit: string | number;
+  id?: number;
+  legal_name: string;
+  short_name: string;
+  counterparty_code: string;
+  country: string;
+  type: string;
+  credit_status: string;
+  credit_limit: string | number;
 }
 
 export interface CapacityFormData {

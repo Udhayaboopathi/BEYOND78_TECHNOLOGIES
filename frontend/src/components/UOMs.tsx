@@ -30,7 +30,7 @@ import {
   exportUOMs,
   importUOMs,
 } from "../api";
-import { UOM, UOMFormData } from '../types';
+import { UOM, UOMFormData } from "../types";
 
 const UOMs: React.FC = () => {
   const [uoms, setUOMs] = useState<UOM[]>([]);
@@ -42,7 +42,7 @@ const UOMs: React.FC = () => {
   const [currentUOM, setCurrentUOM] = useState<UOMFormData>({
     name: "",
     type: "",
-    base_conversion: "",
+    base_uom: "",
     description: "",
     is_active: true,
   });
@@ -72,13 +72,19 @@ const UOMs: React.FC = () => {
         id: uom.id,
         name: uom.name || "",
         type: uom.type || "",
-        base_conversion: uom.base_conversion?.toString() || "",
+        base_uom: uom.base_uom?.toString() || "",
         description: uom.description || "",
         is_active: uom.is_active ?? true,
       });
     } else {
       setEditMode(false);
-      setCurrentUOM({ name: "", type: "", base_conversion: "", description: "", is_active: true });
+      setCurrentUOM({
+        name: "",
+        type: "",
+        base_uom: "",
+        description: "",
+        is_active: true,
+      });
     }
     setOpenDialog(true);
   };
@@ -91,11 +97,14 @@ const UOMs: React.FC = () => {
     try {
       const uomData = {
         ...currentUOM,
-        base_conversion: typeof currentUOM.base_conversion === 'string' 
-          ? (currentUOM.base_conversion ? parseFloat(currentUOM.base_conversion) : undefined)
-          : currentUOM.base_conversion,
+        base_uom:
+          typeof currentUOM.base_uom === "string"
+            ? currentUOM.base_uom
+              ? parseFloat(currentUOM.base_uom)
+              : undefined
+            : currentUOM.base_uom,
       };
-      
+
       if (editMode && currentUOM.id) {
         await updateUOM(currentUOM.id, uomData);
       } else {
@@ -178,7 +187,7 @@ const UOMs: React.FC = () => {
                 <TableCell>{uom.id}</TableCell>
                 <TableCell>{uom.name}</TableCell>
                 <TableCell>{uom.type}</TableCell>
-                <TableCell>{uom.base_conversion}</TableCell>
+                <TableCell>{uom.base_uom}</TableCell>
                 <TableCell>{uom.description}</TableCell>
                 <TableCell>
                   <IconButton
@@ -230,9 +239,9 @@ const UOMs: React.FC = () => {
             fullWidth
             margin="normal"
             label="Base Conversion"
-            name="base_conversion"
+            name="base_uom"
             type="number"
-            value={currentUOM.base_conversion}
+            value={currentUOM.base_uom}
             onChange={handleInputChange}
           />
           <TextField
@@ -260,10 +269,16 @@ const UOMs: React.FC = () => {
         entityName="UOMs"
         entityKey="uoms"
         onSuccess={fetchUOMs}
-        templateColumns={['name', 'type', 'description', 'base_conversion', 'is_active']}
+        templateColumns={[
+          "name",
+          "type",
+          "description",
+          "base_uom",
+          "is_active",
+        ]}
       />
     </div>
   );
-}
+};
 
 export default UOMs;

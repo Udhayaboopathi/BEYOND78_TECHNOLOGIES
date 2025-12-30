@@ -1,0 +1,23 @@
+Commodity Name,Description,UOM,Density,Energy UOM,Is Active
+Crude Oil - Brent,Brent benchmark crude oil,BBL,1.0,1,1
+Natural Gas,Pipeline quality natural gas,MMBTU,1.0,1,1
+Jet Fuel,Aviation fuel (Jet A-1),BBL,1.0,1,1
+C3,Propane,GAL,1.0,1,1
+CBOB,CBOB,BBL,1.0,1,1
+RBOB,RBOB,BBL,1.0,1,1
+Light Crude,Light Crude,BBL,1.0,1,1
+Light Sour Crude,Light Sour Crude,BBL,1.0,1,1
+Light Sweet Crude,Light Sweet Crude,BBL,1.0,1,1
+Reformate,Hydrotreated reformate stream,BBL,1.0,1,1
+Alkylate,Light olefin alkylate stream,BBL,1.0,1,1
+FCC Gasoline,Fluid Catalytic Cracked gasoline,BBL,1.0,1,1
+Isomerate,Isomerization product,BBL,1.0,1,1
+Butane,Natural gas liquid C4 stream,BBL,1.0,1,1
+Light Straight-Run,Straight-run gasoline fraction (LSR),BBL,1.0,1,1
+Murban Crude Oil,Murban Crude Oil,BBL,1.0,1,1
+LPG,Liquified Petroleum Gas,MMBTU,1.0,1,1
+Distillate Fuel Oil,Distillate Fuel Oil,BBL,1.0,1,1
+Methane,Methane,GAL,1.0,1,1
+C2,Ethane,GAL,1.0,1,1
+C4,Butane,GAL,1.0,1,1
+Nat Gas,Nat Gas,GAL,1.0,1,1

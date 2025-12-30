@@ -16,7 +16,7 @@ def validate_uom_exists(db, value: str) -> tuple[bool, str]:
     query = text("""
         SELECT COUNT(*) FROM uoms
         WHERE name = :name
-        AND `delete` = 0x00000000000000000000000000000000
+        AND is_deleted = 0
     """)
     result = db.execute(query, {"name": value}).scalar()
     if result == 0:
@@ -72,11 +72,12 @@ ENTITY_CONFIGS: Dict[str, EntityConfig] = {
             ),
             ColumnConfig(
                 name="UOM",
-                field="uom",
+                field="uom_id",
                 required=True,
                 data_type="string",
-                validation_fn=validate_uom_exists
-                # Note: UOM is validated but stored as name, not FK ID
+                foreign_key="uoms",
+                fk_display_field="name",
+                fk_lookup_field="name"
             ),
             ColumnConfig(
                 name="Density",
@@ -88,16 +89,14 @@ ENTITY_CONFIGS: Dict[str, EntityConfig] = {
                 name="Energy UOM",
                 field="energy_uom",
                 required=False,  # Made optional - not all commodities need this
-                data_type="string",
-                validation_fn=validate_uom_exists
-                # Note: Energy UOM is validated but stored as name, not FK ID
+                data_type="string"
             ),
             ColumnConfig(
                 name="Is Active",
                 field="is_active",
                 required=False,
                 data_type="boolean",
-                default_value=bytes.fromhex('01' * 16)  # Default to active (BINARY(16) with all 1s)
+                default_value=True  # Default to active
             )
         ]
     ),
@@ -159,12 +158,12 @@ ENTITY_CONFIGS: Dict[str, EntityConfig] = {
             ),
             ColumnConfig(
                 name="ParentCounterpartyID",
-                field="parent_contvarcharerpartu_id",
+                field="counterparty_id",
                 required=True,
                 data_type="number",
                 foreign_key="counter_parties",
-                fk_display_field="LegalName",
-                fk_lookup_field="LegalName"
+                fk_display_field="legal_name",
+                fk_lookup_field="legal_name"
             )
         ]
     ),
@@ -172,48 +171,48 @@ ENTITY_CONFIGS: Dict[str, EntityConfig] = {
     "counter_parties": EntityConfig(
         entity_name="Counter Parties",
         table_name="counter_parties",
-        primary_key="CounterpartyID",  # Custom primary key field name
-        unique_key=["CounterpartyCode"],
+        primary_key="id",  # Custom primary key field name
+        unique_key=["counterparty_code"],
         columns=[
             ColumnConfig(
                 name="Legal Name",
-                field="LegalName",
+                field="legal_name",
                 required=True,
                 data_type="string"
             ),
             ColumnConfig(
                 name="Short Name",
-                field="ShortName",
+                field="short_name",
                 required=True,
                 data_type="string"
             ),
             ColumnConfig(
                 name="Code",
-                field="CounterpartyCode",
+                field="counterparty_code",
                 required=True,
                 data_type="string"
             ),
             ColumnConfig(
                 name="Country",
-                field="Country",
+                field="country",
                 required=False,
                 data_type="string"
             ),
             ColumnConfig(
                 name="Type",
-                field="Type",
+                field="type",
                 required=False,
                 data_type="string"
             ),
             ColumnConfig(
                 name="Credit Status",
-                field="CreditStatus",
+                field="credit_status",
                 required=False,
                 data_type="string"
             ),
             ColumnConfig(
                 name="Credit Limit",
-                field="CreditLimit",
+                field="credit_limit",
                 required=False,
                 data_type="number"
             )
@@ -302,6 +301,12 @@ ENTITY_CONFIGS: Dict[str, EntityConfig] = {
                 name="Effective To",
                 field="eff_dt_to",
                 required=True,
+                data_type="date"
+            ),
+            ColumnConfig(
+                name="Last Modified",
+                field="last_modified",
+                required=False,
                 data_type="date"
             )
         ]

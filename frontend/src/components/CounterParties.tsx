@@ -44,13 +44,13 @@ const CounterParties: React.FC = () => {
   const [openImportDialog, setOpenImportDialog] = useState<boolean>(false);
   const [editMode, setEditMode] = useState<boolean>(false);
   const [currentParty, setCurrentParty] = useState<CounterPartyFormData>({
-    LegalName: "",
-    ShortName: "",
-    CounterpartyCode: "",
-    Country: "",
-    Type: "",
-    CreditStatus: "",
-    CreditLimit: 0,
+    legal_name: "",
+    short_name: "",
+    counterparty_code: "",
+    country: "",
+    type: "",
+    credit_status: "",
+    credit_limit: 0,
   });
 
   useEffect(() => {
@@ -75,25 +75,25 @@ const CounterParties: React.FC = () => {
     if (party) {
       setEditMode(true);
       setCurrentParty({
-        CounterpartyID: party.CounterpartyID,
-        LegalName: party.LegalName || "",
-        ShortName: party.ShortName || "",
-        CounterpartyCode: party.CounterpartyCode || "",
-        Country: party.Country || "",
-        Type: party.Type || "",
-        CreditStatus: party.CreditStatus || "",
-        CreditLimit: party.CreditLimit || 0,
+        id: party.id,
+        legal_name: party.legal_name || "",
+        short_name: party.short_name || "",
+        counterparty_code: party.counterparty_code || "",
+        country: party.country || "",
+        type: party.type || "",
+        credit_status: party.credit_status || "",
+        credit_limit: party.credit_limit || 0,
       });
     } else {
       setEditMode(false);
       setCurrentParty({
-        LegalName: "",
-        ShortName: "",
-        CounterpartyCode: "",
-        Country: "",
-        Type: "",
-        CreditStatus: "",
-        CreditLimit: 0,
+        legal_name: "",
+        short_name: "",
+        counterparty_code: "",
+        country: "",
+        type: "",
+        credit_status: "",
+        credit_limit: 0,
       });
     }
     setOpenDialog(true);
@@ -106,16 +106,16 @@ const CounterParties: React.FC = () => {
   const handleSave = async () => {
     try {
       const data = {
-        LegalName: currentParty.LegalName,
-        ShortName: currentParty.ShortName,
-        CounterpartyCode: currentParty.CounterpartyCode,
-        Country: currentParty.Country,
-        Type: currentParty.Type,
-        CreditStatus: currentParty.CreditStatus,
-        CreditLimit: typeof currentParty.CreditLimit === 'string' ? parseFloat(currentParty.CreditLimit) : currentParty.CreditLimit,
+        legal_name: currentParty.legal_name,
+        short_name: currentParty.short_name,
+        counterparty_code: currentParty.counterparty_code,
+        country: currentParty.country,
+        type: currentParty.type,
+        credit_status: currentParty.credit_status,
+        credit_limit: typeof currentParty.credit_limit === 'string' ? parseFloat(currentParty.credit_limit) : currentParty.credit_limit,
       };
-      if (editMode && currentParty.CounterpartyID) {
-        await updateCounterParty(currentParty.CounterpartyID, data);
+      if (editMode && currentParty.id) {
+        await updateCounterParty(currentParty.id, data);
       } else {
         await createCounterParty(data);
       }
@@ -197,15 +197,15 @@ const CounterParties: React.FC = () => {
           </TableHead>
           <TableBody>
             {parties.map((party) => (
-              <TableRow key={party.CounterpartyID}>
-                <TableCell>{party.CounterpartyID}</TableCell>
-                <TableCell>{party.LegalName}</TableCell>
-                <TableCell>{party.ShortName}</TableCell>
-                <TableCell>{party.CounterpartyCode}</TableCell>
-                <TableCell>{party.Country}</TableCell>
-                <TableCell>{party.Type}</TableCell>
-                <TableCell>{party.CreditStatus}</TableCell>
-                <TableCell>${party.CreditLimit?.toLocaleString()}</TableCell>
+              <TableRow key={party.id}>
+                <TableCell>{party.id}</TableCell>
+                <TableCell>{party.legal_name}</TableCell>
+                <TableCell>{party.short_name}</TableCell>
+                <TableCell>{party.counterparty_code}</TableCell>
+                <TableCell>{party.country}</TableCell>
+                <TableCell>{party.type}</TableCell>
+                <TableCell>{party.credit_status}</TableCell>
+                <TableCell>${party.credit_limit?.toLocaleString()}</TableCell>
                 <TableCell>
                   <IconButton
                     color="primary"
@@ -215,7 +215,7 @@ const CounterParties: React.FC = () => {
                   </IconButton>
                   <IconButton
                     color="error"
-                    onClick={() => handleDelete(party.CounterpartyID!)}
+                    onClick={() => handleDelete(party.id!)}
                   >
                     <Delete />
                   </IconButton>
@@ -240,8 +240,8 @@ const CounterParties: React.FC = () => {
             fullWidth
             margin="normal"
             label="Legal Name"
-            name="LegalName"
-            value={currentParty.LegalName}
+            name="legal_name"
+            value={currentParty.legal_name}
             onChange={handleInputChange}
             required
           />
@@ -249,8 +249,8 @@ const CounterParties: React.FC = () => {
             fullWidth
             margin="normal"
             label="Short Name"
-            name="ShortName"
-            value={currentParty.ShortName}
+            name="short_name"
+            value={currentParty.short_name}
             onChange={handleInputChange}
             required
           />
@@ -258,8 +258,8 @@ const CounterParties: React.FC = () => {
             fullWidth
             margin="normal"
             label="Code"
-            name="CounterpartyCode"
-            value={currentParty.CounterpartyCode}
+            name="counterparty_code"
+            value={currentParty.counterparty_code}
             onChange={handleInputChange}
             required
           />
@@ -267,8 +267,8 @@ const CounterParties: React.FC = () => {
             fullWidth
             margin="normal"
             label="Country"
-            name="Country"
-            value={currentParty.Country}
+            name="country"
+            value={currentParty.country}
             onChange={handleInputChange}
             required
           />
@@ -276,17 +276,17 @@ const CounterParties: React.FC = () => {
             fullWidth
             margin="normal"
             label="Type"
-            name="Type"
-            value={currentParty.Type}
+            name="type"
+            value={currentParty.type}
             onChange={handleInputChange}
             required
           />
           <FormControl fullWidth margin="normal" required>
             <InputLabel>Credit Status</InputLabel>
             <Select
-              name="CreditStatus"
-              value={currentParty.CreditStatus}
-              onChange={(e) => setCurrentParty((prev) => ({ ...prev, CreditStatus: e.target.value }))}
+              name="credit_status"
+              value={currentParty.credit_status}
+              onChange={(e) => setCurrentParty((prev) => ({ ...prev, credit_status: e.target.value }))}
               label="Credit Status"
             >
               <MenuItem value="Approved">Approved</MenuItem>
@@ -300,9 +300,9 @@ const CounterParties: React.FC = () => {
             fullWidth
             margin="normal"
             label="Credit Limit"
-            name="CreditLimit"
+            name="credit_limit"
             type="number"
-            value={currentParty.CreditLimit}
+            value={currentParty.credit_limit}
             onChange={handleInputChange}
             required
           />
@@ -322,8 +322,11 @@ const CounterParties: React.FC = () => {
         entityName="Counter Parties"
         entityKey="counter_parties"
         templateColumns={[
-          "Name",
-          "Description",
+          "Legal Name",
+          "Short Name",
+          "Code",
+          "Country",
+          "Type",
           "Credit Status",
           "Credit Limit",
         ]}

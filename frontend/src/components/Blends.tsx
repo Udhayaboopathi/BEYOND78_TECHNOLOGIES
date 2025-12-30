@@ -359,8 +359,8 @@ const Blends: React.FC = () => {
               label="UOM"
             >
               {commodities.map((commodity) => (
-                <MenuItem key={commodity.id} value={commodity.uom}>
-                  {commodity.uom}
+                <MenuItem key={commodity.id} value={commodity.uom?.name || ''}>
+                  {commodity.uom?.name || 'N/A'}
                 </MenuItem>
               ))}
             </Select>

@@ -25,9 +25,9 @@ class BlendNested(BaseModel):
         from_attributes = True
 
 class CounterPartyNested(BaseModel):
-    CounterpartyID: int
-    LegalName: str
-    ShortName: str
+    id: int
+    legal_name: str
+    short_name: str
 
 # Blend Component for transactional creation
 class BlendComponentInput(BaseModel):
@@ -54,7 +54,7 @@ class LocationNested(BaseModel):
 class CommodityCreate(BaseModel):
     name: str
     description: str
-    uom: str
+    uom_id: int
     density: Optional[float] = None
     energy_uom: Optional[str] = None
     is_active: bool = True
@@ -62,7 +62,7 @@ class CommodityCreate(BaseModel):
 class CommodityUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    uom: Optional[str] = None
+    uom_id: Optional[int] = None
     density: Optional[float] = None
     energy_uom: Optional[str] = None
     is_active: Optional[bool] = None
@@ -73,11 +73,13 @@ class Commodity(BaseModel):
     id: int
     name: str
     description: str
-    uom: str
+    uom_id: int
     density: Optional[float] = None
     energy_uom: Optional[str] = None
-    create_at: datetime
-    update_at: datetime
+    is_active: Optional[bool] = True
+    created_at: datetime
+    updated_at: datetime
+    uom: Optional[UOMNested] = None
 
 # UOM schemas
 class UOMCreate(BaseModel):
@@ -143,50 +145,51 @@ class BlendComponent(BaseModel):
     commodity: Optional[CommodityNested] = None
 
 # CounterParty schemas
+# CounterParty schemas
 class CounterPartyCreate(BaseModel):
-    LegalName: str
-    ShortName: str
-    CounterpartyCode: str
-    Country: str
-    Type: str
-    CreditStatus: str
-    CreditLimit: float
+    legal_name: str
+    short_name: str
+    counterparty_code: str
+    country: str
+    type: str
+    credit_status: str
+    credit_limit: float
 
 class CounterPartyUpdate(BaseModel):
-    LegalName: Optional[str] = None
-    ShortName: Optional[str] = None
-    CounterpartyCode: Optional[str] = None
-    Country: Optional[str] = None
-    Type: Optional[str] = None
-    CreditStatus: Optional[str] = None
-    CreditLimit: Optional[float] = None
+    legal_name: Optional[str] = None
+    short_name: Optional[str] = None
+    counterparty_code: Optional[str] = None
+    country: Optional[str] = None
+    type: Optional[str] = None
+    credit_status: Optional[str] = None
+    credit_limit: Optional[float] = None
 
 class CounterParty(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
-    CounterpartyID: int
-    LegalName: str
-    ShortName: str
-    CounterpartyCode: str
-    Country: str
-    Type: str
-    CreditStatus: str
-    CreditLimit: float
-    CreatedAt: datetime
-    UpdatedAt: datetime
+    id: int
+    legal_name: str
+    short_name: str
+    counterparty_code: str
+    country: str
+    type: str
+    credit_status: str
+    credit_limit: float
+    created_at: datetime
+    updated_at: datetime
 
 # Location schemas
 class LocationCreate(BaseModel):
     name: str
     type: str
     description: str
-    parent_contvarcharerpartu_id: int
+    counterparty_id: int
 
 class LocationUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[str] = None
     description: Optional[str] = None
-    parent_contvarcharerpartu_id: Optional[int] = None
+    counterparty_id: Optional[int] = None
 
 class Location(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -195,7 +198,7 @@ class Location(BaseModel):
     name: str
     type: str
     description: str
-    parent_contvarcharerpartu_id: int
+    counterparty_id: int
     counter_party: Optional[CounterPartyNested] = None
 
 # Capacity schemas
@@ -225,7 +228,7 @@ class Capacity(BaseModel):
     uom_id: int
     eff_dt_from: date
     eff_dt_to: date
-    dt_last_modified: date
+    last_modified: datetime
     commodity: Optional[CommodityNested] = None
     location: Optional[LocationNested] = None
     uom: Optional[UOMNested] = None
