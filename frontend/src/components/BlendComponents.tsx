@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Typography,
   Paper,
@@ -22,6 +22,7 @@ import {
   Select,
   FormControl,
   InputLabel,
+  SelectChangeEvent,
 } from "@mui/material";
 import { Add, Edit, Delete } from "@mui/icons-material";
 import ExportButton from "./ExportButton";
@@ -33,28 +34,33 @@ import {
   getBlends,
   getCommodities,
   getCommodityDetails,
-  validateBlendProportion,
   exportBlendComponents,
 } from "../api";
+import { BlendComponent, Blend, Commodity } from '../types';
 
-function BlendComponents() {
-  const [components, setComponents] = useState([]);
-  const [blends, setBlends] = useState([]);
-  const [commodities, setCommodities] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [validationError, setValidationError] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [currentComponent, setCurrentComponent] = useState({
+const BlendComponents: React.FC = () => {
+  const [components, setComponents] = useState<BlendComponent[]>([]);
+  const [blends, setBlends] = useState<Blend[]>([]);
+  const [commodities, setCommodities] = useState<Commodity[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [currentComponent, setCurrentComponent] = useState<{
+    id?: number;
+    blend_id: string;
+    commodity_id: string;
+    proportion: string;
+  }>({
     blend_id: "",
     commodity_id: "",
     proportion: "",
   });
 
   // Auto-populated read-only fields
-  const [commodityDetails, setCommodityDetails] = useState(null);
-  const [proportionTotal, setProportionTotal] = useState(0);
+  const [commodityDetails, setCommodityDetails] = useState<Commodity | null>(null);
+  const [proportionTotal, setProportionTotal] = useState<number>(0);
 
   useEffect(() => {
     fetchComponents();
@@ -94,14 +100,14 @@ function BlendComponents() {
     }
   };
 
-  const handleOpenDialog = (component = null) => {
+  const handleOpenDialog = (component: BlendComponent | null = null) => {
     if (component) {
       setEditMode(true);
       setCurrentComponent({
         id: component.id,
-        blend_id: component.blend_id,
-        commodity_id: component.commodity_id,
-        proportion: component.proportion,
+        blend_id: component.blend_id.toString(),
+        commodity_id: component.commodity_id.toString(),
+        proportion: component.proportion.toString(),
       });
       // Load details for edit mode
       if (component.commodity_id)
@@ -118,23 +124,25 @@ function BlendComponents() {
     setOpenDialog(true);
   };
 
-  const fetchCommodityDetailsData = async (commodityId) => {
+  const fetchCommodityDetailsData = async (commodityId: string | number) => {
     try {
-      const response = await getCommodityDetails(commodityId);
+      const id = typeof commodityId === 'string' ? parseInt(commodityId) : commodityId;
+      const response = await getCommodityDetails(id);
       setCommodityDetails(response.data);
     } catch (err) {
       console.error("Failed to fetch commodity details:", err);
     }
   };
 
-  const calculateProportionTotal = async (blendId, excludeId = null) => {
+  const calculateProportionTotal = async (blendId: string | number, excludeId: number | null = null) => {
     try {
+      const id = typeof blendId === 'string' ? parseInt(blendId) : blendId;
       // Calculate current total from components list
       const blendComponents = components.filter(
-        (c) => c.blend_id === blendId && c.id !== excludeId
+        (c) => c.blend_id === id && c.id !== excludeId
       );
       const total = blendComponents.reduce(
-        (sum, c) => sum + parseFloat(c.proportion || 0),
+        (sum, c) => sum + (c.proportion || 0),
         0
       );
       setProportionTotal(total);
@@ -151,14 +159,18 @@ function BlendComponents() {
   const handleSave = async () => {
     try {
       setValidationError(null);
+      const proportionValue = typeof currentComponent.proportion === 'string' 
+        ? parseFloat(currentComponent.proportion) 
+        : currentComponent.proportion;
+      
       const data = {
         blend_id: parseInt(currentComponent.blend_id),
         commodity_id: parseInt(currentComponent.commodity_id),
-        proportion: parseFloat(currentComponent.proportion),
+        proportion: proportionValue,
       };
 
       // Validate proportion total (should equal 100% or 1.0)
-      const currentProportion = parseFloat(currentComponent.proportion || 0);
+      const currentProportion = proportionValue || 0;
       const existingTotal = editMode ? proportionTotal : proportionTotal;
       const newTotal = existingTotal + currentProportion;
 
@@ -174,15 +186,15 @@ function BlendComponents() {
         return;
       }
 
-      if (editMode) {
+      if (editMode && currentComponent.id) {
         await updateBlendComponent(currentComponent.id, data);
       } else {
         await createBlendComponent(data);
       }
       handleCloseDialog();
       fetchComponents();
-    } catch (err) {
-      if (err.response?.data?.detail) {
+    } catch (err: any) {
+      if (err?.response?.data?.detail) {
         setValidationError(err.response.data.detail);
       } else {
         setError("Failed to save blend component.");
@@ -191,7 +203,8 @@ function BlendComponents() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number | undefined) => {
+    if (!id) return;
     if (
       window.confirm("Are you sure you want to delete this blend component?")
     ) {
@@ -205,9 +218,9 @@ function BlendComponents() {
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>) => {
     const { name, value } = e.target;
-    setCurrentComponent((prev) => ({ ...prev, [name]: value }));
+    setCurrentComponent((prev) => ({ ...prev, [name as string]: value }));
 
     // Auto-populate dependent data when commodity changes
     if (name === "commodity_id" && value) {
@@ -216,7 +229,7 @@ function BlendComponents() {
 
     // Recalculate proportion total when blend changes
     if (name === "blend_id" && value) {
-      calculateProportionTotal(value, editMode ? currentComponent.id : null);
+      calculateProportionTotal(value, editMode && currentComponent.id ? currentComponent.id : null);
     }
   };
 
@@ -235,6 +248,7 @@ function BlendComponents() {
         <Box display="flex" gap={2}>
           <ExportButton
             onExport={exportBlendComponents}
+            filename="blend_components.csv"
             label="Export Blend Components"
           />
           <Button
@@ -367,26 +381,14 @@ function BlendComponents() {
                 disabled
                 size="small"
               />
-              {commodityDetails.uom && (
-                <>
-                  <TextField
-                    fullWidth
-                    margin="dense"
-                    label="UOM Type"
-                    value={commodityDetails.uom.type || ""}
-                    disabled
-                    size="small"
-                  />
-                  <TextField
-                    fullWidth
-                    margin="dense"
-                    label="Base UOM"
-                    value={commodityDetails.uom.base_uom || ""}
-                    disabled
-                    size="small"
-                  />
-                </>
-              )}
+              <TextField
+                fullWidth
+                margin="dense"
+                label="UOM"
+                value={commodityDetails.uom || ""}
+                disabled
+                size="small"
+              />
             </Box>
           )}
 
@@ -400,7 +402,7 @@ function BlendComponents() {
             value={currentComponent.proportion}
             onChange={handleInputChange}
             helperText={`Enter proportion as decimal (0-1). Currently entered: ${(
-              parseFloat(currentComponent.proportion || 0) * 100
+              parseFloat(currentComponent.proportion || '0') * 100
             ).toFixed(2)}%`}
             required
           />
@@ -420,6 +422,6 @@ function BlendComponents() {
       </Dialog>
     </div>
   );
-}
+};
 
 export default BlendComponents;

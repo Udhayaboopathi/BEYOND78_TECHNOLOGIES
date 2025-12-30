@@ -24,6 +24,7 @@ import {
   InputLabel,
   Checkbox,
   FormControlLabel,
+  SelectChangeEvent,
 } from "@mui/material";
 import { Add, Edit, Delete, Upload } from "@mui/icons-material";
 import ExportButton from "./ExportButton";
@@ -37,16 +38,17 @@ import {
   exportCommodities,
   importCommodities,
 } from "../api";
+import { Commodity, UOM, CommodityFormData } from '../types';
 
-function Commodities() {
-  const [commodities, setCommodities] = useState([]);
-  const [uoms, setUOMs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [openImportDialog, setOpenImportDialog] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [currentCommodity, setCurrentCommodity] = useState({
+const Commodities: React.FC = () => {
+  const [commodities, setCommodities] = useState<Commodity[]>([]);
+  const [uoms, setUOMs] = useState<UOM[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [openImportDialog, setOpenImportDialog] = useState<boolean>(false);
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [currentCommodity, setCurrentCommodity] = useState<CommodityFormData>({
     name: "",
     description: "",
     uom: "",
@@ -83,17 +85,17 @@ function Commodities() {
     }
   };
 
-  const handleOpenDialog = (commodity = null) => {
+  const handleOpenDialog = (commodity: Commodity | null = null) => {
     if (commodity) {
       setEditMode(true);
       setCurrentCommodity({
         id: commodity.id,
-        name: commodity.name,
-        description: commodity.description,
-        uom: commodity.uom,
-        density: commodity.density,
-        energy_uom: commodity.energy_uom,
-        is_active: commodity.is_active,
+        name: commodity.name || "",
+        description: commodity.description || "",
+        uom: commodity.uom || "",
+        density: commodity.density?.toString() || "",
+        energy_uom: commodity.energy_uom || "",
+        is_active: commodity.is_active ?? true,
       });
     } else {
       setEditMode(false);
@@ -115,10 +117,17 @@ function Commodities() {
 
   const handleSave = async () => {
     try {
-      if (editMode) {
-        await updateCommodity(currentCommodity.id, currentCommodity);
+      const commodityData = {
+        ...currentCommodity,
+        density: typeof currentCommodity.density === 'string' 
+          ? (currentCommodity.density ? parseFloat(currentCommodity.density) : undefined)
+          : currentCommodity.density,
+      };
+      
+      if (editMode && currentCommodity.id) {
+        await updateCommodity(currentCommodity.id, commodityData);
       } else {
-        await createCommodity(currentCommodity);
+        await createCommodity(commodityData);
       }
       handleCloseDialog();
       fetchCommodities();
@@ -128,7 +137,8 @@ function Commodities() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number | undefined) => {
+    if (!id) return;
     if (window.confirm("Are you sure you want to delete this commodity?")) {
       try {
         await deleteCommodity(id);
@@ -140,9 +150,9 @@ function Commodities() {
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent) => {
     const { name, value } = e.target;
-    setCurrentCommodity((prev) => ({
+    setCurrentCommodity((prev: CommodityFormData) => ({
       ...prev,
       [name]: name === "density" ? parseFloat(value) : value,
     }));
@@ -303,7 +313,7 @@ function Commodities() {
               <Checkbox
                 checked={currentCommodity.is_active}
                 onChange={(e) =>
-                  setCurrentCommodity((prev) => ({
+                  setCurrentCommodity((prev: CommodityFormData) => ({
                     ...prev,
                     is_active: e.target.checked,
                   }))
@@ -326,9 +336,10 @@ function Commodities() {
         open={openImportDialog}
         onClose={() => setOpenImportDialog(false)}
         onImport={importCommodities}
-        title="Import Commodities"
+        entityName="Commodities"
         entityKey="commodities"
         onSuccess={fetchCommodities}
+        templateColumns={['name', 'description', 'uom', 'density', 'energy_uom', 'is_active']}
       />
     </div>
   );

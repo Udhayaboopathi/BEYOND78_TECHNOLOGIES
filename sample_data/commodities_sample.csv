@@ -1,8 +1,8 @@
-name,description,uom,density,energy_uom
-Crude Oil,Light sweet crude oil,Barrel,0.85,GJ
-Natural Gas,Pipeline quality natural gas,Cubic Meter,0.72,GJ
-Coal,Bituminous coal,Metric Ton,1.35,GJ
-Gasoline,Premium unleaded gasoline,Liter,0.74,MJ
-Diesel,Ultra-low sulfur diesel,Liter,0.83,MJ
-LNG,Liquefied natural gas,Metric Ton,0.45,GJ
-Jet Fuel,Aviation turbine fuel,Liter,0.81,MJ
+Commodity Name,Description,UOM,Density,Energy UOM,Is Active
+Crude Oil,Light sweet crude oil,Barrel,0.85,GJ,true
+Natural Gas,Pipeline quality natural gas,Cubic Meter,0.72,GJ,true
+Coal,Bituminous coal,Metric Ton,1.35,GJ,true
+Gasoline,Premium unleaded gasoline,Liter,0.74,MJ,true
+Diesel,Ultra-low sulfur diesel,Liter,0.83,MJ,true
+LNG,Liquefied natural gas,Metric Ton,0.45,GJ,true
+Jet Fuel,Aviation turbine fuel,Liter,0.81,MJ,true

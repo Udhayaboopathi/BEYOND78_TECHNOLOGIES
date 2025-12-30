@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import { Button, CircularProgress } from "@mui/material";
+import { useState } from "react";
+import { Button, CircularProgress, ButtonProps } from "@mui/material";
 import { Download } from "@mui/icons-material";
+import { ExportButtonProps } from "../types";
 
-function ExportButton({ onExport, label, ...props }) {
-  const [exporting, setExporting] = useState(false);
+const ExportButton: React.FC<ExportButtonProps & Omit<ButtonProps, 'onClick'>> = ({ onExport, label = "Export", ...props }) => {
+  const [exporting, setExporting] = useState<boolean>(false);
 
   const handleExport = async () => {
     setExporting(true);

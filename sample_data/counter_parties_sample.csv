@@ -1,4 +1,4 @@
-LegalName,ShortName,CounterpartyCode,Country,Type,CreditStatus,CreditLimit
+Legal Name,Short Name,Code,Country,Type,Credit Status,Credit Limit
 Shell International Trading Ltd,Shell,SHELL001,Netherlands,Supplier,Approved,5000000.00
 ExxonMobil Corporation,Exxon,EXXON001,USA,Supplier,Approved,10000000.00
 BP Trading Limited,BP,BP001,UK,Buyer,Approved,7500000.00

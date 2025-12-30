@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Typography,
   Paper,
@@ -18,6 +18,10 @@ import {
   DialogActions,
   TextField,
   Box,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import { Add, Edit, Delete, Upload } from "@mui/icons-material";
 import ExportButton from "./ExportButton";
@@ -30,22 +34,23 @@ import {
   exportCounterParties,
   importCounterParties,
 } from "../api";
+import { CounterParty, CounterPartyFormData } from '../types';
 
-function CounterParties() {
-  const [parties, setParties] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [openImportDialog, setOpenImportDialog] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [currentParty, setCurrentParty] = useState({
+const CounterParties: React.FC = () => {
+  const [parties, setParties] = useState<CounterParty[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [openImportDialog, setOpenImportDialog] = useState<boolean>(false);
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [currentParty, setCurrentParty] = useState<CounterPartyFormData>({
     LegalName: "",
     ShortName: "",
     CounterpartyCode: "",
     Country: "",
     Type: "",
     CreditStatus: "",
-    CreditLimit: "",
+    CreditLimit: 0,
   });
 
   useEffect(() => {
@@ -66,10 +71,19 @@ function CounterParties() {
     }
   };
 
-  const handleOpenDialog = (party = null) => {
+  const handleOpenDialog = (party: CounterParty | null = null) => {
     if (party) {
       setEditMode(true);
-      setCurrentParty(party);
+      setCurrentParty({
+        CounterpartyID: party.CounterpartyID,
+        LegalName: party.LegalName || "",
+        ShortName: party.ShortName || "",
+        CounterpartyCode: party.CounterpartyCode || "",
+        Country: party.Country || "",
+        Type: party.Type || "",
+        CreditStatus: party.CreditStatus || "",
+        CreditLimit: party.CreditLimit || 0,
+      });
     } else {
       setEditMode(false);
       setCurrentParty({
@@ -79,7 +93,7 @@ function CounterParties() {
         Country: "",
         Type: "",
         CreditStatus: "",
-        CreditLimit: "",
+        CreditLimit: 0,
       });
     }
     setOpenDialog(true);
@@ -92,10 +106,15 @@ function CounterParties() {
   const handleSave = async () => {
     try {
       const data = {
-        ...currentParty,
-        CreditLimit: parseFloat(currentParty.CreditLimit),
+        LegalName: currentParty.LegalName,
+        ShortName: currentParty.ShortName,
+        CounterpartyCode: currentParty.CounterpartyCode,
+        Country: currentParty.Country,
+        Type: currentParty.Type,
+        CreditStatus: currentParty.CreditStatus,
+        CreditLimit: typeof currentParty.CreditLimit === 'string' ? parseFloat(currentParty.CreditLimit) : currentParty.CreditLimit,
       };
-      if (editMode) {
+      if (editMode && currentParty.CounterpartyID) {
         await updateCounterParty(currentParty.CounterpartyID, data);
       } else {
         await createCounterParty(data);
@@ -108,7 +127,7 @@ function CounterParties() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number) => {
     if (window.confirm("Are you sure you want to delete this counter party?")) {
       try {
         await deleteCounterParty(id);
@@ -120,7 +139,7 @@ function CounterParties() {
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setCurrentParty((prev) => ({ ...prev, [name]: value }));
   };
@@ -186,7 +205,7 @@ function CounterParties() {
                 <TableCell>{party.Country}</TableCell>
                 <TableCell>{party.Type}</TableCell>
                 <TableCell>{party.CreditStatus}</TableCell>
-                <TableCell>{party.CreditLimit}</TableCell>
+                <TableCell>${party.CreditLimit?.toLocaleString()}</TableCell>
                 <TableCell>
                   <IconButton
                     color="primary"
@@ -196,7 +215,7 @@ function CounterParties() {
                   </IconButton>
                   <IconButton
                     color="error"
-                    onClick={() => handleDelete(party.CounterpartyID)}
+                    onClick={() => handleDelete(party.CounterpartyID!)}
                   >
                     <Delete />
                   </IconButton>
@@ -238,7 +257,7 @@ function CounterParties() {
           <TextField
             fullWidth
             margin="normal"
-            label="Counterparty Code"
+            label="Code"
             name="CounterpartyCode"
             value={currentParty.CounterpartyCode}
             onChange={handleInputChange}
@@ -262,15 +281,21 @@ function CounterParties() {
             onChange={handleInputChange}
             required
           />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Credit Status"
-            name="CreditStatus"
-            value={currentParty.CreditStatus}
-            onChange={handleInputChange}
-            required
-          />
+          <FormControl fullWidth margin="normal" required>
+            <InputLabel>Credit Status</InputLabel>
+            <Select
+              name="CreditStatus"
+              value={currentParty.CreditStatus}
+              onChange={(e) => setCurrentParty((prev) => ({ ...prev, CreditStatus: e.target.value }))}
+              label="Credit Status"
+            >
+              <MenuItem value="Approved">Approved</MenuItem>
+              <MenuItem value="Under Review">Under Review</MenuItem>
+              <MenuItem value="Suspended">Suspended</MenuItem>
+              <MenuItem value="Rejected">Rejected</MenuItem>
+              <MenuItem value="Pending">Pending</MenuItem>
+            </Select>
+          </FormControl>
           <TextField
             fullWidth
             margin="normal"
@@ -294,8 +319,14 @@ function CounterParties() {
         open={openImportDialog}
         onClose={() => setOpenImportDialog(false)}
         onImport={importCounterParties}
-        title="Import Counter Parties"
+        entityName="Counter Parties"
         entityKey="counter_parties"
+        templateColumns={[
+          "Name",
+          "Description",
+          "Credit Status",
+          "Credit Limit",
+        ]}
         onSuccess={fetchCounterParties}
       />
     </div>

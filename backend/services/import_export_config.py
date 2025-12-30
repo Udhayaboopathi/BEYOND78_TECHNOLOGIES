@@ -5,6 +5,23 @@ Defines validation rules, column mappings, and business rules per entity
 
 from typing import Dict, List, Optional, Callable, Any
 from pydantic import BaseModel
+from sqlalchemy import text
+
+# ================================
+# VALIDATION FUNCTIONS
+# ================================
+
+def validate_uom_exists(db, value: str) -> tuple[bool, str]:
+    """Validate that a UOM name exists in the database"""
+    query = text("""
+        SELECT COUNT(*) FROM uoms
+        WHERE name = :name
+        AND `delete` = 0x00000000000000000000000000000000
+    """)
+    result = db.execute(query, {"name": value}).scalar()
+    if result == 0:
+        return False, f"UOM '{value}' not found in database"
+    return True, ""
 
 class ColumnConfig(BaseModel):
     """Column configuration for import/export"""
@@ -58,9 +75,8 @@ ENTITY_CONFIGS: Dict[str, EntityConfig] = {
                 field="uom",
                 required=True,
                 data_type="string",
-                foreign_key="uoms",
-                fk_display_field="name",
-                fk_lookup_field="name"
+                validation_fn=validate_uom_exists
+                # Note: UOM is validated but stored as name, not FK ID
             ),
             ColumnConfig(
                 name="Density",
@@ -73,9 +89,8 @@ ENTITY_CONFIGS: Dict[str, EntityConfig] = {
                 field="energy_uom",
                 required=False,  # Made optional - not all commodities need this
                 data_type="string",
-                foreign_key="uoms",
-                fk_display_field="name",
-                fk_lookup_field="name"
+                validation_fn=validate_uom_exists
+                # Note: Energy UOM is validated but stored as name, not FK ID
             ),
             ColumnConfig(
                 name="Is Active",
@@ -149,7 +164,7 @@ ENTITY_CONFIGS: Dict[str, EntityConfig] = {
                 data_type="number",
                 foreign_key="counter_parties",
                 fk_display_field="LegalName",
-                fk_lookup_field="CounterpartyID"
+                fk_lookup_field="LegalName"
             )
         ]
     ),

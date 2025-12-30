@@ -55,8 +55,8 @@ class CommodityCreate(BaseModel):
     name: str
     description: str
     uom: str
-    density: float
-    energy_uom: str
+    density: Optional[float] = None
+    energy_uom: Optional[str] = None
     is_active: bool = True
 
 class CommodityUpdate(BaseModel):
@@ -74,8 +74,8 @@ class Commodity(BaseModel):
     name: str
     description: str
     uom: str
-    density: float
-    energy_uom: str
+    density: Optional[float] = None
+    energy_uom: Optional[str] = None
     create_at: datetime
     update_at: datetime
 

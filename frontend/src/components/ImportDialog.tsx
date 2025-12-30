@@ -26,18 +26,25 @@ import {
   CheckCircle,
   Error as ErrorIcon,
 } from "@mui/icons-material";
+import { ImportDialogProps, ImportResult } from '../types';
 
-function ImportDialog({ open, onClose, onImport, title, templateColumns }) {
-  const [file, setFile] = useState(null);
-  const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
+const ImportDialog: React.FC<ImportDialogProps> = ({ 
+  open, 
+  onClose, 
+  onImport, 
+  title, 
+  templateColumns = [] 
+}) => {
+  const [file, setFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState<boolean>(false);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleFileChange = (event) => {
-    const selectedFile = event.target.files[0];
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
     if (selectedFile) {
-      const fileType = selectedFile.name.split(".").pop().toLowerCase();
-      if (!["xlsx", "xls", "csv"].includes(fileType)) {
+      const fileType = selectedFile.name.split(".").pop()?.toLowerCase();
+      if (!fileType || !["xlsx", "xls", "csv"].includes(fileType)) {
         setError("Please select a valid Excel (.xlsx, .xls) or CSV file");
         setFile(null);
         return;
@@ -75,7 +82,7 @@ function ImportDialog({ open, onClose, onImport, title, templateColumns }) {
           handleClose();
         }, 3000);
       }
-    } catch (err) {
+    } catch (err: any) {
       const errorMsg =
         err.response?.data?.detail?.message ||
         err.response?.data?.detail ||
@@ -205,26 +212,14 @@ function ImportDialog({ open, onClose, onImport, title, templateColumns }) {
                               <TableRow key={index}>
                                 <TableCell>
                                   <Chip
-                                    label={fail.row || fail.blend || index + 1}
+                                    label={fail.row || index + 1}
                                     size="small"
                                   />
                                 </TableCell>
                                 <TableCell>
-                                  {Array.isArray(fail.errors) ? (
-                                    <ul style={{ margin: 0, paddingLeft: 20 }}>
-                                      {fail.errors.map((err, i) => (
-                                        <li key={i}>
-                                          <Typography variant="caption">
-                                            {err}
-                                          </Typography>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  ) : (
-                                    <Typography variant="caption">
-                                      {fail.errors}
-                                    </Typography>
-                                  )}
+                                  <Typography variant="caption">
+                                    {fail.error}
+                                  </Typography>
                                 </TableCell>
                               </TableRow>
                             ))}

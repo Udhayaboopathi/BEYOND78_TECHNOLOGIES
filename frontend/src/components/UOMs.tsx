@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Typography,
   Paper,
@@ -30,19 +30,21 @@ import {
   exportUOMs,
   importUOMs,
 } from "../api";
+import { UOM, UOMFormData } from '../types';
 
-function UOMs() {
-  const [uoms, setUOMs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [openImportDialog, setOpenImportDialog] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [currentUOM, setCurrentUOM] = useState({
+const UOMs: React.FC = () => {
+  const [uoms, setUOMs] = useState<UOM[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [openImportDialog, setOpenImportDialog] = useState<boolean>(false);
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [currentUOM, setCurrentUOM] = useState<UOMFormData>({
     name: "",
     type: "",
-    base_uom: "",
+    base_conversion: "",
     description: "",
+    is_active: true,
   });
 
   useEffect(() => {
@@ -63,13 +65,20 @@ function UOMs() {
     }
   };
 
-  const handleOpenDialog = (uom = null) => {
+  const handleOpenDialog = (uom: UOM | null = null) => {
     if (uom) {
       setEditMode(true);
-      setCurrentUOM(uom);
+      setCurrentUOM({
+        id: uom.id,
+        name: uom.name || "",
+        type: uom.type || "",
+        base_conversion: uom.base_conversion?.toString() || "",
+        description: uom.description || "",
+        is_active: uom.is_active ?? true,
+      });
     } else {
       setEditMode(false);
-      setCurrentUOM({ name: "", type: "", base_uom: "", description: "" });
+      setCurrentUOM({ name: "", type: "", base_conversion: "", description: "", is_active: true });
     }
     setOpenDialog(true);
   };
@@ -80,10 +89,17 @@ function UOMs() {
 
   const handleSave = async () => {
     try {
-      if (editMode) {
-        await updateUOM(currentUOM.id, currentUOM);
+      const uomData = {
+        ...currentUOM,
+        base_conversion: typeof currentUOM.base_conversion === 'string' 
+          ? (currentUOM.base_conversion ? parseFloat(currentUOM.base_conversion) : undefined)
+          : currentUOM.base_conversion,
+      };
+      
+      if (editMode && currentUOM.id) {
+        await updateUOM(currentUOM.id, uomData);
       } else {
-        await createUOM(currentUOM);
+        await createUOM(uomData);
       }
       handleCloseDialog();
       fetchUOMs();
@@ -93,7 +109,8 @@ function UOMs() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number | undefined) => {
+    if (!id) return;
     if (window.confirm("Are you sure you want to delete this UOM?")) {
       try {
         await deleteUOM(id);
@@ -105,7 +122,7 @@ function UOMs() {
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setCurrentUOM((prev) => ({ ...prev, [name]: value }));
   };
@@ -161,7 +178,7 @@ function UOMs() {
                 <TableCell>{uom.id}</TableCell>
                 <TableCell>{uom.name}</TableCell>
                 <TableCell>{uom.type}</TableCell>
-                <TableCell>{uom.base_uom}</TableCell>
+                <TableCell>{uom.base_conversion}</TableCell>
                 <TableCell>{uom.description}</TableCell>
                 <TableCell>
                   <IconButton
@@ -212,11 +229,11 @@ function UOMs() {
           <TextField
             fullWidth
             margin="normal"
-            label="Base UOM"
-            name="base_uom"
-            value={currentUOM.base_uom}
+            label="Base Conversion"
+            name="base_conversion"
+            type="number"
+            value={currentUOM.base_conversion}
             onChange={handleInputChange}
-            required
           />
           <TextField
             fullWidth
@@ -240,9 +257,10 @@ function UOMs() {
         open={openImportDialog}
         onClose={() => setOpenImportDialog(false)}
         onImport={importUOMs}
-        title="Import UOMs"
+        entityName="UOMs"
         entityKey="uoms"
         onSuccess={fetchUOMs}
+        templateColumns={['name', 'type', 'description', 'base_conversion', 'is_active']}
       />
     </div>
   );

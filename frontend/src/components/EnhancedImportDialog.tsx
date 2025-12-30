@@ -17,36 +17,30 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  Link,
 } from "@mui/material";
 import { CloudUpload, ExpandMore, Download } from "@mui/icons-material";
 import { downloadTemplate } from "../api";
+import { EnhancedImportDialogProps, ImportResult } from '../types';
 
 /**
  * Enhanced ImportDialog - Generic import component for all entities
- *
- * @param {boolean} open - Dialog open state
- * @param {function} onClose - Close handler
- * @param {function} onImport - Import function that accepts FormData
- * @param {string} title - Dialog title
- * @param {string} entityKey - Entity key for template download (e.g., 'commodities', 'uoms')
- * @param {function} onSuccess - Optional success callback
  */
-function EnhancedImportDialog({
+const EnhancedImportDialog: React.FC<EnhancedImportDialogProps> = ({
   open,
   onClose,
   onImport,
-  title,
+  entityName,
   entityKey,
   onSuccess,
-}) {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  templateColumns: _templateColumns,
+}) => {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [downloadingTemplate, setDownloadingTemplate] = useState<boolean>(false);
 
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
       // Validate file type
       const validTypes = [
@@ -124,7 +118,7 @@ function EnhancedImportDialog({
           if (onSuccess) onSuccess();
         }, 3000);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Import failed:", error);
       const errorData = error.response?.data?.detail || error.response?.data;
 
@@ -136,8 +130,7 @@ function EnhancedImportDialog({
             typeof errorData === "string"
               ? errorData
               : "Import failed. Please check your file and try again.",
-          successful: 0,
-          failed: 1,
+          summary: { successful: 0, failed: 1, total: 1 },
           errors: [],
         });
       }
@@ -152,21 +145,9 @@ function EnhancedImportDialog({
     onClose();
   };
 
-  const groupErrorsByRow = (errors) => {
-    const grouped = {};
-    errors.forEach((error) => {
-      const row = error.row || 0;
-      if (!grouped[row]) {
-        grouped[row] = [];
-      }
-      grouped[row].push(error);
-    });
-    return grouped;
-  };
-
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <DialogTitle>{title}</DialogTitle>
+      <DialogTitle>Import {entityName}</DialogTitle>
       <DialogContent>
         <Box sx={{ mb: 3 }}>
           <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -237,9 +218,9 @@ function EnhancedImportDialog({
           <Box sx={{ mt: 2 }}>
             <Alert
               severity={
-                result.failed === 0
+                (result.summary?.failed === 0 || result.failed?.length === 0)
                   ? "success"
-                  : result.successful === 0
+                  : (result.summary?.successful === 0 || result.successful?.length === 0)
                   ? "error"
                   : "warning"
               }
@@ -249,9 +230,9 @@ function EnhancedImportDialog({
                 <strong>{result.message}</strong>
               </Typography>
               <Typography variant="caption">
-                {result.successful > 0 &&
-                  `✓ ${result.successful} records imported successfully. `}
-                {result.failed > 0 && `✗ ${result.failed} records failed.`}
+                {(result.summary?.successful || result.successful?.length || 0) > 0 &&
+                  `✓ ${result.summary?.successful || result.successful?.length} records imported successfully. `}
+                {(result.summary?.failed || result.failed?.length || 0) > 0 && `✗ ${result.summary?.failed || result.failed?.length} records failed.`}
               </Typography>
             </Alert>
 
