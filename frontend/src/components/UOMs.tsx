@@ -18,8 +18,13 @@ import {
   DialogActions,
   TextField,
   Box,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Grid,
 } from "@mui/material";
-import { Add, Edit, Delete, Upload } from "@mui/icons-material";
+import { Add, Edit, Delete, Upload, Refresh } from "@mui/icons-material";
 import ExportButton from "./ExportButton";
 import EnhancedImportDialog from "./EnhancedImportDialog";
 import {
@@ -42,10 +47,14 @@ const UOMs: React.FC = () => {
   const [currentUOM, setCurrentUOM] = useState<UOMFormData>({
     name: "",
     type: "",
-    base_conversion: "",
+    base_uom: "",
     description: "",
     is_active: true,
   });
+  
+  // Filter states
+  const [filterName, setFilterName] = useState<string>("");
+  const [filterType, setFilterType] = useState<string>("");
 
   useEffect(() => {
     fetchUOMs();
@@ -72,13 +81,13 @@ const UOMs: React.FC = () => {
         id: uom.id,
         name: uom.name || "",
         type: uom.type || "",
-        base_conversion: uom.base_conversion?.toString() || "",
+        base_uom: uom.base_uom || "",
         description: uom.description || "",
         is_active: uom.is_active ?? true,
       });
     } else {
       setEditMode(false);
-      setCurrentUOM({ name: "", type: "", base_conversion: "", description: "", is_active: true });
+      setCurrentUOM({ name: "", type: "", base_uom: "", description: "", is_active: true });
     }
     setOpenDialog(true);
   };
@@ -91,9 +100,6 @@ const UOMs: React.FC = () => {
     try {
       const uomData = {
         ...currentUOM,
-        base_conversion: typeof currentUOM.base_conversion === 'string' 
-          ? (currentUOM.base_conversion ? parseFloat(currentUOM.base_conversion) : undefined)
-          : currentUOM.base_conversion,
       };
       
       if (editMode && currentUOM.id) {
@@ -127,37 +133,84 @@ const UOMs: React.FC = () => {
     setCurrentUOM((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Filter UOMs
+  const filteredUOMs = uoms.filter((uom) => {
+    const matchesName = filterName === "" || 
+      uom.name?.toLowerCase().includes(filterName.toLowerCase());
+    const matchesType = filterType === "" || uom.type === filterType;
+    return matchesName && matchesType;
+  });
+
+  const handleClearFilters = () => {
+    setFilterName("");
+    setFilterType("");
+  };
+
   if (loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
     <div>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-      >
-        <Typography variant="h4">Units of Measurement (UOMs)</Typography>
-        <Box display="flex" gap={2}>
-          <ExportButton onExport={exportUOMs} label="Export UOMs" />
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<Upload />}
-            onClick={() => setOpenImportDialog(true)}
-          >
-            Import UOMs
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Add UOM
-          </Button>
-        </Box>
+      <Typography variant="h4" mb={2}>Units of Measurement (UOMs)</Typography>
+
+      {/* Filter Section */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Filter: Name"
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Filter: Type</InputLabel>
+              <Select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                label="Filter: Type"
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="Mass">Mass</MenuItem>
+                <MenuItem value="Volume">Volume</MenuItem>
+                <MenuItem value="Energy">Energy</MenuItem>
+                <MenuItem value="Length">Length</MenuItem>
+                <MenuItem value="Temperature">Temperature</MenuItem>
+                <MenuItem value="Pressure">Pressure</MenuItem>
+                <MenuItem value="Time">Time</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Box display="flex" gap={1} flexWrap="wrap">
+              <Button size="small" variant="outlined" onClick={handleClearFilters}>
+                Clear filters
+              </Button>
+              <Button size="small" variant="contained" onClick={() => handleOpenDialog()}>
+                New
+              </Button>
+              <IconButton size="small" color="primary" onClick={fetchUOMs} title="Refresh">
+                <Refresh />
+              </IconButton>
+            </Box>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Action Buttons */}
+      <Box display="flex" gap={2} mb={2} flexWrap="wrap">
+        <ExportButton onExport={exportUOMs} label="Export UOMs" />
+        <Button
+          variant="outlined"
+          color="secondary"
+          startIcon={<Upload />}
+          onClick={() => setOpenImportDialog(true)}
+        >
+          Import UOMs
+        </Button>
       </Box>
 
       <TableContainer component={Paper}>
@@ -173,12 +226,12 @@ const UOMs: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {uoms.map((uom) => (
+            {filteredUOMs.map((uom) => (
               <TableRow key={uom.id}>
                 <TableCell>{uom.id}</TableCell>
                 <TableCell>{uom.name}</TableCell>
                 <TableCell>{uom.type}</TableCell>
-                <TableCell>{uom.base_conversion}</TableCell>
+                <TableCell>{uom.base_uom}</TableCell>
                 <TableCell>{uom.description}</TableCell>
                 <TableCell>
                   <IconButton
@@ -217,24 +270,57 @@ const UOMs: React.FC = () => {
             onChange={handleInputChange}
             required
           />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Type"
-            name="type"
-            value={currentUOM.type}
-            onChange={handleInputChange}
-            required
-          />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Base Conversion"
-            name="base_conversion"
-            type="number"
-            value={currentUOM.base_conversion}
-            onChange={handleInputChange}
-          />
+          <FormControl fullWidth margin="normal" required>
+            <InputLabel>Type</InputLabel>
+            <Select
+              name="type"
+              value={currentUOM.type}
+              onChange={(e) => setCurrentUOM(prev => ({ ...prev, type: e.target.value }))}
+              label="Type"
+            >
+              <MenuItem value="Mass">Mass</MenuItem>
+              <MenuItem value="Volume">Volume</MenuItem>
+              <MenuItem value="Energy">Energy</MenuItem>
+              <MenuItem value="Length">Length</MenuItem>
+              <MenuItem value="Temperature">Temperature</MenuItem>
+              <MenuItem value="Pressure">Pressure</MenuItem>
+              <MenuItem value="Time">Time</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl fullWidth margin="normal" required>
+            <InputLabel>Base UOM</InputLabel>
+            <Select
+              name="base_uom"
+              value={currentUOM.base_uom}
+              onChange={(e) => setCurrentUOM(prev => ({ ...prev, base_uom: e.target.value }))}
+              label="Base UOM"
+            >
+              <MenuItem value="kg">kg (Kilogram)</MenuItem>
+              <MenuItem value="MT">MT (Metric Ton)</MenuItem>
+              <MenuItem value="lb">lb (Pound)</MenuItem>
+              <MenuItem value="L">L (Liter)</MenuItem>
+              <MenuItem value="m³">m³ (Cubic Meter)</MenuItem>
+              <MenuItem value="bbl">bbl (Barrel)</MenuItem>
+              <MenuItem value="gal">gal (Gallon)</MenuItem>
+              <MenuItem value="MJ">MJ (Megajoule)</MenuItem>
+              <MenuItem value="GJ">GJ (Gigajoule)</MenuItem>
+              <MenuItem value="kWh">kWh (Kilowatt-hour)</MenuItem>
+              <MenuItem value="MWh">MWh (Megawatt-hour)</MenuItem>
+              <MenuItem value="BTU">BTU (British Thermal Unit)</MenuItem>
+              <MenuItem value="m">m (Meter)</MenuItem>
+              <MenuItem value="ft">ft (Foot)</MenuItem>
+              <MenuItem value="°C">°C (Celsius)</MenuItem>
+              <MenuItem value="°F">°F (Fahrenheit)</MenuItem>
+              <MenuItem value="K">K (Kelvin)</MenuItem>
+              <MenuItem value="Pa">Pa (Pascal)</MenuItem>
+              <MenuItem value="bar">bar (Bar)</MenuItem>
+              <MenuItem value="psi">psi (Pounds per Square Inch)</MenuItem>
+              <MenuItem value="s">s (Second)</MenuItem>
+              <MenuItem value="min">min (Minute)</MenuItem>
+              <MenuItem value="h">h (Hour)</MenuItem>
+              <MenuItem value="day">day (Day)</MenuItem>
+            </Select>
+          </FormControl>
           <TextField
             fullWidth
             margin="normal"
@@ -260,7 +346,7 @@ const UOMs: React.FC = () => {
         entityName="UOMs"
         entityKey="uoms"
         onSuccess={fetchUOMs}
-        templateColumns={['name', 'type', 'description', 'base_conversion', 'is_active']}
+        templateColumns={['name', 'type', 'description', 'base_uom', 'is_active']}
       />
     </div>
   );

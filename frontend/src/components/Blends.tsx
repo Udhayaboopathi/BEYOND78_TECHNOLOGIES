@@ -29,12 +29,12 @@ import {
   SelectChangeEvent,
 } from "@mui/material";
 import {
-  Add,
   Edit,
   Delete,
   Visibility,
   AddCircle,
   Upload,
+  Refresh,
 } from "@mui/icons-material";
 import ExportButton from "./ExportButton";
 import ImportDialog from "./ImportDialog";
@@ -76,11 +76,11 @@ const Blends: React.FC = () => {
     id?: number;
     name: string;
     description: string;
-    uom?: string;
+    commodity_id?: number;
   }>({
     name: "",
     description: "",
-    uom: "",
+    commodity_id: undefined,
   });
   const [viewingBlend, setViewingBlend] = useState<Blend | null>(null);
   const [blendComposition, setBlendComposition] = useState<Array<{
@@ -88,6 +88,11 @@ const Blends: React.FC = () => {
     value: number;
     proportion: number;
   }>>([]);
+  
+  // Filter states
+  const [filterName, setFilterName] = useState<string>("");
+  const [filterDescription, setFilterDescription] = useState<string>("");
+  const [filterCommodity, setFilterCommodity] = useState<number | string>("");
 
   useEffect(() => {
     fetchBlends();
@@ -157,11 +162,11 @@ const Blends: React.FC = () => {
         id: blend.id,
         name: blend.name || "",
         description: blend.description || "",
-        uom: blend.uom || "",
+        commodity_id: blend.commodity_id,
       });
     } else {
       setEditMode(false);
-      setCurrentBlend({ name: "", description: "", uom: "" });
+      setCurrentBlend({ name: "", description: "", commodity_id: undefined });
     }
     setOpenDialog(true);
   };
@@ -175,7 +180,7 @@ const Blends: React.FC = () => {
       const data = {
         name: currentBlend.name,
         description: currentBlend.description,
-        uom: currentBlend.uom,
+        commodity_id: currentBlend.commodity_id,
       };
       if (editMode && currentBlend.id) {
         await updateBlend(currentBlend.id, data);
@@ -208,45 +213,121 @@ const Blends: React.FC = () => {
     setCurrentBlend((prev) => ({ ...prev, [name as string]: value }));
   };
 
+  // Filter blends based on filter criteria
+  const filteredBlends = blends.filter((blend) => {
+    const matchesName = filterName === "" || 
+      blend.name?.toLowerCase().includes(filterName.toLowerCase());
+    const matchesDescription = filterDescription === "" || 
+      blend.description?.toLowerCase().includes(filterDescription.toLowerCase());
+    const matchesCommodity = filterCommodity === "" || 
+      blend.commodity_id === Number(filterCommodity);
+    
+    return matchesName && matchesDescription && matchesCommodity;
+  });
+
+  const handleClearFilters = () => {
+    setFilterName("");
+    setFilterDescription("");
+    setFilterCommodity("");
+  };
+
   if (loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
     <div>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-      >
-        <Typography variant="h4">Blends</Typography>
-        <Box display="flex" gap={2}>
-          <ExportButton onExport={exportBlends} label="Export Blends" />
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<Upload />}
-            onClick={() => setOpenImportDialog(true)}
-          >
-            Import Blends
-          </Button>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<AddCircle />}
-            onClick={() => navigate("/create-blend")}
-          >
-            Create Blend with Components
-          </Button>
-          <Button
-            variant="outlined"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Quick Add Blend
-          </Button>
-        </Box>
+      <Typography variant="h4" mb={2}>Blends</Typography>
+      <Typography variant="subtitle2" color="textSecondary" mb={3}>
+        Define finished blends and their component makeups
+      </Typography>
+
+      {/* Filter Section */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={3}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Filter: Name"
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Filter: Description"
+              value={filterDescription}
+              onChange={(e) => setFilterDescription(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Filter: Commodity</InputLabel>
+              <Select
+                value={filterCommodity}
+                onChange={(e) => setFilterCommodity(e.target.value)}
+                label="Filter: Commodity"
+              >
+                <MenuItem value="">All</MenuItem>
+                {commodities.map((commodity) => (
+                  <MenuItem key={commodity.id} value={commodity.id}>
+                    {commodity.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Box display="flex" gap={1} flexWrap="wrap">
+              <Button 
+                size="small" 
+                variant="outlined" 
+                onClick={handleClearFilters}
+              >
+                Clear filters
+              </Button>
+              <Button 
+                size="small" 
+                variant="contained" 
+                color="primary"
+                onClick={() => handleOpenDialog()}
+              >
+                New
+              </Button>
+              <IconButton 
+                size="small" 
+                color="primary"
+                onClick={fetchBlends}
+                title="Refresh"
+              >
+                <Refresh />
+              </IconButton>
+            </Box>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Action Buttons */}
+      <Box display="flex" gap={2} mb={2} flexWrap="wrap">
+        <ExportButton onExport={exportBlends} label="Export Blends" />
+        <Button
+          variant="outlined"
+          color="secondary"
+          startIcon={<Upload />}
+          onClick={() => setOpenImportDialog(true)}
+        >
+          Import Blends
+        </Button>
+        <Button
+          variant="contained"
+          color="success"
+          startIcon={<AddCircle />}
+          onClick={() => navigate("/create-blend")}
+        >
+          Create Blend with Components
+        </Button>
       </Box>
 
       <TableContainer component={Paper}>
@@ -262,7 +343,7 @@ const Blends: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {blends.map((blend) => {
+            {filteredBlends.map((blend) => {
               const components = blendComponents.filter(
                 (c) => c.blend_id === blend.id
               );
@@ -276,7 +357,7 @@ const Blends: React.FC = () => {
                   <TableCell>{blend.id}</TableCell>
                   <TableCell>{blend.name}</TableCell>
                   <TableCell>{blend.description}</TableCell>
-                  <TableCell>{blend.uom || "N/A"}</TableCell>
+                  <TableCell>{blend.commodity?.name || "N/A"}</TableCell>
                   <TableCell>
                     <Box display="flex" alignItems="center" gap={1}>
                       <Chip
@@ -350,17 +431,17 @@ const Blends: React.FC = () => {
             onChange={handleInputChange}
             required
           />
-          <FormControl fullWidth margin="normal">
-            <InputLabel>UOM</InputLabel>
+          <FormControl fullWidth margin="normal" required>
+            <InputLabel>Commodity</InputLabel>
             <Select
-              name="uom"
-              value={currentBlend.uom || ''}
-              onChange={handleInputChange}
-              label="UOM"
+              name="commodity_id"
+              value={currentBlend.commodity_id || ''}
+              onChange={(e) => setCurrentBlend(prev => ({ ...prev, commodity_id: Number(e.target.value) }))}
+              label="Commodity"
             >
               {commodities.map((commodity) => (
-                <MenuItem key={commodity.id} value={commodity.uom}>
-                  {commodity.uom}
+                <MenuItem key={commodity.id} value={commodity.id}>
+                  {commodity.name} ({commodity.uom})
                 </MenuItem>
               ))}
             </Select>
@@ -415,10 +496,10 @@ const Blends: React.FC = () => {
                     </Box>
                     <Box mb={2}>
                       <Typography variant="subtitle2" color="textSecondary">
-                        Unit of Measure
+                        Commodity
                       </Typography>
                       <Typography variant="body1">
-                        {viewingBlend.uom || "N/A"}
+                        {viewingBlend.commodity?.name || "N/A"}
                       </Typography>
                     </Box>
                   </CardContent>

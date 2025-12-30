@@ -23,8 +23,9 @@ import {
   FormControl,
   InputLabel,
   SelectChangeEvent,
+  Grid,
 } from "@mui/material";
-import { Add, Edit, Delete, Upload } from "@mui/icons-material";
+import { Add, Edit, Delete, Upload, Refresh } from "@mui/icons-material";
 import ExportButton from "./ExportButton";
 import EnhancedImportDialog from "./EnhancedImportDialog";
 import {
@@ -52,6 +53,10 @@ const Locations: React.FC = () => {
     description: "",
     parent_contvarcharerpartu_id: 0,
   });
+  
+  // Filter states
+  const [filterName, setFilterName] = useState<string>("");
+  const [filterType, setFilterType] = useState<string>("");
 
   useEffect(() => {
     fetchLocations();
@@ -144,37 +149,81 @@ const Locations: React.FC = () => {
     setCurrentLocation((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Filter locations
+  const filteredLocations = locations.filter((location) => {
+    const matchesName = filterName === "" || 
+      location.name?.toLowerCase().includes(filterName.toLowerCase());
+    const matchesType = filterType === "" || location.type === filterType;
+    return matchesName && matchesType;
+  });
+
+  const handleClearFilters = () => {
+    setFilterName("");
+    setFilterType("");
+  };
+
   if (loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
     <div>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-      >
-        <Typography variant="h4">Locations</Typography>
-        <Box display="flex" gap={2}>
-          <ExportButton onExport={exportLocations} label="Export Locations" />
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<Upload />}
-            onClick={() => setOpenImportDialog(true)}
-          >
-            Import Locations
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Add Location
-          </Button>
-        </Box>
+      <Typography variant="h4" mb={2}>Locations</Typography>
+
+      {/* Filter Section */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Filter: Name"
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Filter: Type</InputLabel>
+              <Select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                label="Filter: Type"
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="Port">Port</MenuItem>
+                <MenuItem value="Pipeline">Pipeline</MenuItem>
+                <MenuItem value="Storage">Storage</MenuItem>
+                <MenuItem value="Refinery">Refinery</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Box display="flex" gap={1} flexWrap="wrap">
+              <Button size="small" variant="outlined" onClick={handleClearFilters}>
+                Clear filters
+              </Button>
+              <Button size="small" variant="contained" onClick={() => handleOpenDialog()}>
+                New
+              </Button>
+              <IconButton size="small" color="primary" onClick={fetchLocations} title="Refresh">
+                <Refresh />
+              </IconButton>
+            </Box>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Action Buttons */}
+      <Box display="flex" gap={2} mb={2} flexWrap="wrap">
+        <ExportButton onExport={exportLocations} label="Export Locations" />
+        <Button
+          variant="outlined"
+          color="secondary"
+          startIcon={<Upload />}
+          onClick={() => setOpenImportDialog(true)}
+        >
+          Import Locations
+        </Button>
       </Box>
 
       <TableContainer component={Paper}>
@@ -190,7 +239,7 @@ const Locations: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {locations.map((location) => (
+            {filteredLocations.map((location) => (
               <TableRow key={location.id}>
                 <TableCell>{location.id}</TableCell>
                 <TableCell>{location.name}</TableCell>
@@ -236,15 +285,20 @@ const Locations: React.FC = () => {
             onChange={handleInputChange}
             required
           />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Type"
-            name="type"
-            value={currentLocation.type}
-            onChange={handleInputChange}
-            required
-          />
+          <FormControl fullWidth margin="normal" required>
+            <InputLabel>Type</InputLabel>
+            <Select
+              name="type"
+              value={currentLocation.type}
+              onChange={(e) => setCurrentLocation(prev => ({ ...prev, type: e.target.value }))}
+              label="Type"
+            >
+              <MenuItem value="Port">Port</MenuItem>
+              <MenuItem value="Pipeline">Pipeline</MenuItem>
+              <MenuItem value="Storage">Storage</MenuItem>
+              <MenuItem value="Refinery">Refinery</MenuItem>
+            </Select>
+          </FormControl>
           <TextField
             fullWidth
             margin="normal"

@@ -25,8 +25,9 @@ import {
   Checkbox,
   FormControlLabel,
   SelectChangeEvent,
+  Grid,
 } from "@mui/material";
-import { Add, Edit, Delete, Upload } from "@mui/icons-material";
+import { Add, Edit, Delete, Upload, Refresh } from "@mui/icons-material";
 import ExportButton from "./ExportButton";
 import EnhancedImportDialog from "./EnhancedImportDialog";
 import {
@@ -56,6 +57,11 @@ const Commodities: React.FC = () => {
     energy_uom: "",
     is_active: true,
   });
+  
+  // Filter states
+  const [filterName, setFilterName] = useState<string>("");
+  const [filterDescription, setFilterDescription] = useState<string>("");
+  const [filterUOM, setFilterUOM] = useState<string>("");
 
   useEffect(() => {
     fetchCommodities();
@@ -158,40 +164,94 @@ const Commodities: React.FC = () => {
     }));
   };
 
+  // Filter commodities
+  const filteredCommodities = commodities.filter((commodity) => {
+    const matchesName = filterName === "" || 
+      commodity.name?.toLowerCase().includes(filterName.toLowerCase());
+    const matchesDescription = filterDescription === "" || 
+      commodity.description?.toLowerCase().includes(filterDescription.toLowerCase());
+    const matchesUOM = filterUOM === "" || commodity.uom === filterUOM;
+    return matchesName && matchesDescription && matchesUOM;
+  });
+
+  const handleClearFilters = () => {
+    setFilterName("");
+    setFilterDescription("");
+    setFilterUOM("");
+  };
+
   if (loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
     <div>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-      >
-        <Typography variant="h4">Commodities</Typography>
-        <Box display="flex" gap={2}>
-          <ExportButton
-            onExport={exportCommodities}
-            label="Export Commodities"
-          />
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<Upload />}
-            onClick={() => setOpenImportDialog(true)}
-          >
-            Import Commodities
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Add Commodity
-          </Button>
-        </Box>
+      <Typography variant="h4" mb={2}>Commodities</Typography>
+
+      {/* Filter Section */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={3}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Filter: Name"
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Filter: Description"
+              value={filterDescription}
+              onChange={(e) => setFilterDescription(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Filter: UOM</InputLabel>
+              <Select
+                value={filterUOM}
+                onChange={(e) => setFilterUOM(e.target.value)}
+                label="Filter: UOM"
+              >
+                <MenuItem value="">All</MenuItem>
+                {uoms.map((uom) => (
+                  <MenuItem key={uom.id} value={uom.name}>
+                    {uom.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Box display="flex" gap={1} flexWrap="wrap">
+              <Button size="small" variant="outlined" onClick={handleClearFilters}>
+                Clear filters
+              </Button>
+              <Button size="small" variant="contained" onClick={() => handleOpenDialog()}>
+                New
+              </Button>
+              <IconButton size="small" color="primary" onClick={fetchCommodities} title="Refresh">
+                <Refresh />
+              </IconButton>
+            </Box>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Action Buttons */}
+      <Box display="flex" gap={2} mb={2} flexWrap="wrap">
+        <ExportButton onExport={exportCommodities} label="Export Commodities" />
+        <Button
+          variant="outlined"
+          color="secondary"
+          startIcon={<Upload />}
+          onClick={() => setOpenImportDialog(true)}
+        >
+          Import Commodities
+        </Button>
       </Box>
 
       <TableContainer component={Paper}>
@@ -209,7 +269,7 @@ const Commodities: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {commodities.map((commodity) => (
+            {filteredCommodities.map((commodity) => (
               <TableRow key={commodity.id}>
                 <TableCell>{commodity.id}</TableCell>
                 <TableCell>{commodity.name}</TableCell>

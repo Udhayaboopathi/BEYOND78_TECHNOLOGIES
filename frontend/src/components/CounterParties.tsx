@@ -22,8 +22,9 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Grid,
 } from "@mui/material";
-import { Add, Edit, Delete, Upload } from "@mui/icons-material";
+import { Add, Edit, Delete, Upload, Refresh } from "@mui/icons-material";
 import ExportButton from "./ExportButton";
 import EnhancedImportDialog from "./EnhancedImportDialog";
 import {
@@ -52,6 +53,11 @@ const CounterParties: React.FC = () => {
     CreditStatus: "",
     CreditLimit: 0,
   });
+  
+  // Filter states
+  const [filterName, setFilterName] = useState<string>("");
+  const [filterCountry, setFilterCountry] = useState<string>("");
+  const [filterType, setFilterType] = useState<string>("");
 
   useEffect(() => {
     fetchCounterParties();
@@ -144,40 +150,93 @@ const CounterParties: React.FC = () => {
     setCurrentParty((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Filter counter parties
+  const filteredParties = parties.filter((party) => {
+    const matchesName = filterName === "" || 
+      party.LegalName?.toLowerCase().includes(filterName.toLowerCase()) ||
+      party.ShortName?.toLowerCase().includes(filterName.toLowerCase());
+    const matchesCountry = filterCountry === "" || 
+      party.Country?.toLowerCase().includes(filterCountry.toLowerCase());
+    const matchesType = filterType === "" || party.Type === filterType;
+    return matchesName && matchesCountry && matchesType;
+  });
+
+  const handleClearFilters = () => {
+    setFilterName("");
+    setFilterCountry("");
+    setFilterType("");
+  };
+
   if (loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
     <div>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-      >
-        <Typography variant="h4">Counter Parties</Typography>
-        <Box display="flex" gap={2}>
-          <ExportButton
-            onExport={exportCounterParties}
-            label="Export Counter Parties"
-          />
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<Upload />}
-            onClick={() => setOpenImportDialog(true)}
-          >
-            Import Counter Parties
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Add Counter Party
-          </Button>
-        </Box>
+      <Typography variant="h4" mb={2}>Counter Parties</Typography>
+
+      {/* Filter Section */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={3}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Filter: Name"
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Filter: Country"
+              value={filterCountry}
+              onChange={(e) => setFilterCountry(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Filter: Type</InputLabel>
+              <Select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                label="Filter: Type"
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="Supplier">Supplier</MenuItem>
+                <MenuItem value="Customer">Customer</MenuItem>
+                <MenuItem value="Both">Both</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Box display="flex" gap={1} flexWrap="wrap">
+              <Button size="small" variant="outlined" onClick={handleClearFilters}>
+                Clear filters
+              </Button>
+              <Button size="small" variant="contained" onClick={() => handleOpenDialog()}>
+                New
+              </Button>
+              <IconButton size="small" color="primary" onClick={fetchCounterParties} title="Refresh">
+                <Refresh />
+              </IconButton>
+            </Box>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Action Buttons */}
+      <Box display="flex" gap={2} mb={2} flexWrap="wrap">
+        <ExportButton onExport={exportCounterParties} label="Export Counter Parties" />
+        <Button
+          variant="outlined"
+          color="secondary"
+          startIcon={<Upload />}
+          onClick={() => setOpenImportDialog(true)}
+        >
+          Import Counter Parties
+        </Button>
       </Box>
 
       <TableContainer component={Paper}>
@@ -196,7 +255,7 @@ const CounterParties: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {parties.map((party) => (
+            {filteredParties.map((party) => (
               <TableRow key={party.CounterpartyID}>
                 <TableCell>{party.CounterpartyID}</TableCell>
                 <TableCell>{party.LegalName}</TableCell>

@@ -23,8 +23,9 @@ import {
   FormControl,
   InputLabel,
   SelectChangeEvent,
+  Grid,
 } from "@mui/material";
-import { Add, Edit, Delete, Upload } from "@mui/icons-material";
+import { Add, Edit, Delete, Upload, Refresh } from "@mui/icons-material";
 import {
   getCapacity,
   createCapacity,
@@ -74,6 +75,10 @@ const Capacity: React.FC = () => {
   // Auto-populated read-only fields
   const [commodityDetails, setCommodityDetails] = useState<Commodity | null>(null);
   const [locationDetails, setLocationDetails] = useState<Location | null>(null);
+  
+  // Filter states
+  const [filterCommodity, setFilterCommodity] = useState<number | string>("");
+  const [filterLocation, setFilterLocation] = useState<number | string>("");
 
   useEffect(() => {
     fetchCapacity();
@@ -258,37 +263,91 @@ const Capacity: React.FC = () => {
     }
   };
 
+  // Filter capacity
+  const filteredCapacity = capacity.filter((item) => {
+    const matchesCommodity = filterCommodity === "" || 
+      item.commodity_id === Number(filterCommodity);
+    const matchesLocation = filterLocation === "" || 
+      item.location_id === Number(filterLocation);
+    return matchesCommodity && matchesLocation;
+  });
+
+  const handleClearFilters = () => {
+    setFilterCommodity("");
+    setFilterLocation("");
+  };
+
   if (loading) return <CircularProgress />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
     <div>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-      >
-        <Typography variant="h4">Capacity</Typography>
-        <Box display="flex" gap={2}>
-          <ExportButton onExport={exportCapacity} filename="capacity.csv" label="Export Capacity" />
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<Upload />}
-            onClick={() => setOpenImportDialog(true)}
-          >
-            Import Capacity
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Add Capacity
-          </Button>
-        </Box>
+      <Typography variant="h4" mb={2}>Capacity</Typography>
+
+      {/* Filter Section */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Filter: Commodity</InputLabel>
+              <Select
+                value={filterCommodity}
+                onChange={(e) => setFilterCommodity(e.target.value)}
+                label="Filter: Commodity"
+              >
+                <MenuItem value="">All</MenuItem>
+                {commodities.map((commodity) => (
+                  <MenuItem key={commodity.id} value={commodity.id}>
+                    {commodity.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Filter: Location</InputLabel>
+              <Select
+                value={filterLocation}
+                onChange={(e) => setFilterLocation(e.target.value)}
+                label="Filter: Location"
+              >
+                <MenuItem value="">All</MenuItem>
+                {locations.map((location) => (
+                  <MenuItem key={location.id} value={location.id}>
+                    {location.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Box display="flex" gap={1} flexWrap="wrap">
+              <Button size="small" variant="outlined" onClick={handleClearFilters}>
+                Clear filters
+              </Button>
+              <Button size="small" variant="contained" onClick={() => handleOpenDialog()}>
+                New
+              </Button>
+              <IconButton size="small" color="primary" onClick={fetchCapacity} title="Refresh">
+                <Refresh />
+              </IconButton>
+            </Box>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Action Buttons */}
+      <Box display="flex" gap={2} mb={2} flexWrap="wrap">
+        <ExportButton onExport={exportCapacity} filename="capacity.csv" label="Export Capacity" />
+        <Button
+          variant="outlined"
+          color="secondary"
+          startIcon={<Upload />}
+          onClick={() => setOpenImportDialog(true)}
+        >
+          Import Capacity
+        </Button>
       </Box>
 
       <TableContainer component={Paper}>
@@ -307,7 +366,7 @@ const Capacity: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {capacity.map((item) => (
+            {filteredCapacity.map((item) => (
               <TableRow key={item.id}>
                 <TableCell>{item.id}</TableCell>
                 <TableCell>

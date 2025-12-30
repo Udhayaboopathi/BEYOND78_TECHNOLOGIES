@@ -5,7 +5,7 @@ export interface UOM {
   name: string;
   description?: string;
   type?: string;
-  base_conversion?: number;
+  base_uom?: string;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -50,7 +50,8 @@ export interface Blend {
   id?: number;
   name: string;
   description?: string;
-  uom?: string;
+  commodity_id: number;
+  commodity?: Commodity;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -158,7 +159,7 @@ export interface UOMFormData {
   name: string;
   description: string;
   type: string;
-  base_conversion: string | number;
+  base_uom: string;
   is_active: boolean;
 }
 
