@@ -1,4 +1,4 @@
-name,type,description,parent_counterparty_legal_name
+Location Name,Type,Description,ParentCounterpartyID
 Rotterdam Terminal,Port,Major European oil terminal,Shell International Trading Ltd
 Houston Refinery,Refinery,Large-scale refining facility,ExxonMobil Corporation
 Singapore Hub,Storage,Strategic storage facility,BP Trading Limited

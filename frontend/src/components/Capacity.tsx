@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Typography,
   Paper,
@@ -22,6 +22,7 @@ import {
   Select,
   FormControl,
   InputLabel,
+  SelectChangeEvent,
 } from "@mui/material";
 import { Add, Edit, Delete, Upload } from "@mui/icons-material";
 import {
@@ -38,32 +39,41 @@ import {
   exportCapacity,
   importCapacity,
 } from "../api";
+import type { Capacity as CapacityType, Commodity, Location, UOM } from '../types';
 import ExportButton from "./ExportButton";
 import ImportDialog from "./ImportDialog";
 
-function Capacity() {
-  const [capacity, setCapacity] = useState([]);
-  const [commodities, setCommodities] = useState([]);
-  const [locations, setLocations] = useState([]);
-  const [uoms, setUOMs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [validationError, setValidationError] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [openImportDialog, setOpenImportDialog] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [currentCapacity, setCurrentCapacity] = useState({
+const Capacity: React.FC = () => {
+  const [capacity, setCapacity] = useState<CapacityType[]>([]);
+  const [commodities, setCommodities] = useState<Commodity[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [uoms, setUOMs] = useState<UOM[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [openImportDialog, setOpenImportDialog] = useState<boolean>(false);
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [currentCapacity, setCurrentCapacity] = useState<{
+    id?: number;
+    commodity_id: string;
+    location_id: string;
+    capacity_value: string;
+    capacity_uom: string;
+    effective_from: string;
+    effective_to: string;
+  }>({
     commodity_id: "",
     location_id: "",
-    quantity: "",
-    uom_id: "",
-    eff_dt_from: "",
-    eff_dt_to: "",
+    capacity_value: "",
+    capacity_uom: "",
+    effective_from: "",
+    effective_to: "",
   });
 
   // Auto-populated read-only fields
-  const [commodityDetails, setCommodityDetails] = useState(null);
-  const [locationDetails, setLocationDetails] = useState(null);
+  const [commodityDetails, setCommodityDetails] = useState<Commodity | null>(null);
+  const [locationDetails, setLocationDetails] = useState<Location | null>(null);
 
   useEffect(() => {
     fetchCapacity();
@@ -113,17 +123,17 @@ function Capacity() {
     }
   };
 
-  const handleOpenDialog = (item = null) => {
+  const handleOpenDialog = (item: CapacityType | null = null) => {
     if (item) {
       setEditMode(true);
       setCurrentCapacity({
         id: item.id,
-        commodity_id: item.commodity_id,
-        location_id: item.location_id,
-        quantity: item.quantity,
-        uom_id: item.uom_id,
-        eff_dt_from: item.eff_dt_from,
-        eff_dt_to: item.eff_dt_to,
+        commodity_id: item.commodity_id.toString(),
+        location_id: item.location_id.toString(),
+        capacity_value: item.quantity.toString(),
+        capacity_uom: item.uom_id?.toString() || "",
+        effective_from: item.eff_dt_from || "",
+        effective_to: item.eff_dt_to || "",
       });
       // Load details for edit mode
       if (item.commodity_id) fetchCommodityDetailsData(item.commodity_id);
@@ -133,10 +143,10 @@ function Capacity() {
       setCurrentCapacity({
         commodity_id: "",
         location_id: "",
-        quantity: "",
-        uom_id: "",
-        eff_dt_from: "",
-        eff_dt_to: "",
+        capacity_value: "",
+        capacity_uom: "",
+        effective_from: "",
+        effective_to: "",
       });
       setCommodityDetails(null);
       setLocationDetails(null);
@@ -145,18 +155,20 @@ function Capacity() {
     setOpenDialog(true);
   };
 
-  const fetchCommodityDetailsData = async (commodityId) => {
+  const fetchCommodityDetailsData = async (commodityId: string | number) => {
     try {
-      const response = await getCommodityDetails(commodityId);
+      const id = typeof commodityId === 'string' ? parseInt(commodityId) : commodityId;
+      const response = await getCommodityDetails(id);
       setCommodityDetails(response.data);
     } catch (err) {
       console.error("Failed to fetch commodity details:", err);
     }
   };
 
-  const fetchLocationDetailsData = async (locationId) => {
+  const fetchLocationDetailsData = async (locationId: string | number) => {
     try {
-      const response = await getLocationDetails(locationId);
+      const id = typeof locationId === 'string' ? parseInt(locationId) : locationId;
+      const response = await getLocationDetails(id);
       setLocationDetails(response.data);
     } catch (err) {
       console.error("Failed to fetch location details:", err);
@@ -174,17 +186,17 @@ function Capacity() {
       const data = {
         commodity_id: parseInt(currentCapacity.commodity_id),
         location_id: parseInt(currentCapacity.location_id),
-        quantity: parseFloat(currentCapacity.quantity),
-        uom_id: parseInt(currentCapacity.uom_id),
-        eff_dt_from: currentCapacity.eff_dt_from,
-        eff_dt_to: currentCapacity.eff_dt_to,
+        quantity: parseFloat(currentCapacity.capacity_value),
+        uom_id: parseInt(currentCapacity.capacity_uom),
+        eff_dt_from: currentCapacity.effective_from,
+        eff_dt_to: currentCapacity.effective_to,
       };
 
       // Validate capacity (check for overlapping dates) - skip in edit mode
       if (!editMode) {
         try {
           await validateCapacity(data);
-        } catch (validationErr) {
+        } catch (validationErr: any) {
           setValidationError(
             validationErr.response?.data?.detail ||
               "Overlapping capacity record exists for this commodity and location in the given date range."
@@ -193,20 +205,33 @@ function Capacity() {
         }
       }
 
-      if (editMode) {
+      if (editMode && currentCapacity.id) {
         await updateCapacity(currentCapacity.id, data);
       } else {
         await createCapacity(data);
       }
       handleCloseDialog();
       fetchCapacity();
-    } catch (err) {
-      setError("Failed to save capacity.");
+    } catch (err: any) {
+      // Handle error object properly
+      let errorMessage = "Failed to save capacity.";
+      if (err.response?.data?.detail) {
+        if (typeof err.response.data.detail === 'string') {
+          errorMessage = err.response.data.detail;
+        } else if (Array.isArray(err.response.data.detail)) {
+          errorMessage = err.response.data.detail.map((e: any) => 
+            typeof e === 'string' ? e : e.msg || JSON.stringify(e)
+          ).join(', ');
+        } else {
+          errorMessage = JSON.stringify(err.response.data.detail);
+        }
+      }
+      setError(errorMessage);
       console.error(err);
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number) => {
     if (
       window.confirm("Are you sure you want to delete this capacity record?")
     ) {
@@ -220,9 +245,9 @@ function Capacity() {
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>) => {
     const { name, value } = e.target;
-    setCurrentCapacity((prev) => ({ ...prev, [name]: value }));
+    setCurrentCapacity((prev) => ({ ...prev, [name as string]: value }));
 
     // Auto-populate dependent data when commodity or location changes
     if (name === "commodity_id" && value) {
@@ -246,7 +271,7 @@ function Capacity() {
       >
         <Typography variant="h4">Capacity</Typography>
         <Box display="flex" gap={2}>
-          <ExportButton onExport={exportCapacity} label="Export Capacity" />
+          <ExportButton onExport={exportCapacity} filename="capacity.csv" label="Export Capacity" />
           <Button
             variant="outlined"
             color="secondary"
@@ -305,7 +330,7 @@ function Capacity() {
                   </IconButton>
                   <IconButton
                     color="error"
-                    onClick={() => handleDelete(item.id)}
+                    onClick={() => handleDelete(item.id!)}
                   >
                     <Delete />
                   </IconButton>
@@ -364,34 +389,22 @@ function Capacity() {
                 disabled
                 size="small"
               />
-              {commodityDetails.uom && (
-                <>
-                  <TextField
-                    fullWidth
-                    margin="dense"
-                    label="UOM Type"
-                    value={commodityDetails.uom.type || ""}
-                    disabled
-                    size="small"
-                  />
-                  <TextField
-                    fullWidth
-                    margin="dense"
-                    label="Base UOM"
-                    value={commodityDetails.uom.base_uom || ""}
-                    disabled
-                    size="small"
-                  />
-                  <TextField
-                    fullWidth
-                    margin="dense"
-                    label="UOM Description"
-                    value={commodityDetails.uom.description || ""}
-                    disabled
-                    size="small"
-                  />
-                </>
-              )}
+              <TextField
+                fullWidth
+                margin="dense"
+                label="UOM"
+                value={commodityDetails.uom || ""}
+                disabled
+                size="small"
+              />
+              <TextField
+                fullWidth
+                margin="dense"
+                label="Energy UOM"
+                value={commodityDetails.energy_uom || ""}
+                disabled
+                size="small"
+              />
             </Box>
           )}
 
@@ -435,56 +448,34 @@ function Capacity() {
                 disabled
                 size="small"
               />
-              {locationDetails.parent_location && (
-                <TextField
-                  fullWidth
-                  margin="dense"
-                  label="Parent Location"
-                  value={locationDetails.parent_location.name || ""}
-                  disabled
-                  size="small"
-                />
-              )}
-              {locationDetails.counter_party && (
-                <>
-                  <TextField
-                    fullWidth
-                    margin="dense"
-                    label="Counter Party"
-                    value={locationDetails.counter_party.LegalName || ""}
-                    disabled
-                    size="small"
-                  />
-                  <TextField
-                    fullWidth
-                    margin="dense"
-                    label="Short Name"
-                    value={locationDetails.counter_party.ShortName || ""}
-                    disabled
-                    size="small"
-                  />
-                </>
-              )}
+              <TextField
+                fullWidth
+                margin="dense"
+                label="Description"
+                value={locationDetails.description || ""}
+                disabled
+                size="small"
+              />
             </Box>
           )}
 
           <TextField
             fullWidth
             margin="normal"
-            label="Quantity"
-            name="quantity"
+            label="Capacity Value"
+            name="capacity_value"
             type="number"
-            value={currentCapacity.quantity}
+            value={currentCapacity.capacity_value}
             onChange={handleInputChange}
             required
           />
           <FormControl fullWidth margin="normal" required>
-            <InputLabel>UOM</InputLabel>
+            <InputLabel>Capacity UOM</InputLabel>
             <Select
-              name="uom_id"
-              value={currentCapacity.uom_id}
+              name="capacity_uom"
+              value={currentCapacity.capacity_uom}
               onChange={handleInputChange}
-              label="UOM"
+              label="Capacity UOM"
             >
               {uoms.map((uom) => (
                 <MenuItem key={uom.id} value={uom.id}>
@@ -497,9 +488,9 @@ function Capacity() {
             fullWidth
             margin="normal"
             label="Effective From"
-            name="eff_dt_from"
+            name="effective_from"
             type="date"
-            value={currentCapacity.eff_dt_from}
+            value={currentCapacity.effective_from}
             onChange={handleInputChange}
             InputLabelProps={{ shrink: true }}
             required
@@ -508,9 +499,9 @@ function Capacity() {
             fullWidth
             margin="normal"
             label="Effective To"
-            name="eff_dt_to"
+            name="effective_to"
             type="date"
-            value={currentCapacity.eff_dt_to}
+            value={currentCapacity.effective_to}
             onChange={handleInputChange}
             InputLabelProps={{ shrink: true }}
             required
@@ -545,6 +536,6 @@ function Capacity() {
       />
     </div>
   );
-}
+};
 
 export default Capacity;

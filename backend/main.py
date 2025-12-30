@@ -155,17 +155,27 @@ def get_commodity(commodity_id: int, db: Session = Depends(get_db)):
 
 @app.post("/api/commodities", response_model=schemas.Commodity)
 def create_commodity(commodity: schemas.CommodityCreate, db: Session = Depends(get_db)):
-    db_commodity = models.Commodity(
-        **commodity.model_dump(exclude={'is_active'}),
-        is_active=b'\x01' + b'\x00' * 15 if commodity.is_active else b'\x00' * 16,
-        create_at=datetime.now(),
-        update_at=datetime.now(),
-        delete=b'\x00' * 16
-    )
-    db.add(db_commodity)
-    db.commit()
-    db.refresh(db_commodity)
-    return db_commodity
+    try:
+        db_commodity = models.Commodity(
+            **commodity.model_dump(exclude={'is_active'}),
+            is_active=b'\x01' + b'\x00' * 15 if commodity.is_active else b'\x00' * 16,
+            create_at=datetime.now(),
+            update_at=datetime.now(),
+            delete=b'\x00' * 16
+        )
+        db.add(db_commodity)
+        db.commit()
+        db.refresh(db_commodity)
+        return db_commodity
+    except Exception as e:
+        db.rollback()
+        error_msg = str(e)
+        if "Duplicate entry" in error_msg and "commodities_uom_unique" in error_msg:
+            raise HTTPException(status_code=400, detail="A commodity with this UOM already exists. Each commodity must have a unique UOM.")
+        elif "Duplicate entry" in error_msg:
+            raise HTTPException(status_code=400, detail="A commodity with these details already exists.")
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to create commodity: {error_msg}")
 
 @app.put("/api/commodities/{commodity_id}", response_model=schemas.Commodity)
 def update_commodity(commodity_id: int, commodity: schemas.CommodityUpdate, db: Session = Depends(get_db)):
@@ -526,16 +536,29 @@ def get_counter_party(party_id: int, db: Session = Depends(get_db)):
 
 @app.post("/api/counter-parties", response_model=schemas.CounterParty)
 def create_counter_party(party: schemas.CounterPartyCreate, db: Session = Depends(get_db)):
-    db_party = models.CounterParty(
-        **party.model_dump(),
-        CreatedAt=datetime.now(),
-        UpdatedAt=datetime.now(),
-        delete=b'\x00' * 16
-    )
-    db.add(db_party)
-    db.commit()
-    db.refresh(db_party)
-    return db_party
+    try:
+        db_party = models.CounterParty(
+            **party.model_dump(),
+            CreatedAt=datetime.now(),
+            UpdatedAt=datetime.now(),
+            delete=b'\x00' * 16
+        )
+        db.add(db_party)
+        db.commit()
+        db.refresh(db_party)
+        return db_party
+    except Exception as e:
+        db.rollback()
+        error_msg = str(e)
+        if "Duplicate entry" in error_msg:
+            if "counter_parties_legalname_unique" in error_msg or "LegalName" in error_msg:
+                raise HTTPException(status_code=400, detail="A counter party with this legal name already exists.")
+            elif "CounterpartyCode" in error_msg:
+                raise HTTPException(status_code=400, detail="A counter party with this code already exists.")
+            else:
+                raise HTTPException(status_code=400, detail="A counter party with these details already exists.")
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to create counter party: {error_msg}")
 
 @app.put("/api/counter-parties/{party_id}", response_model=schemas.CounterParty)
 def update_counter_party(party_id: int, party: schemas.CounterPartyUpdate, db: Session = Depends(get_db)):
@@ -583,30 +606,36 @@ def get_capacity_item(capacity_id: int, db: Session = Depends(get_db)):
 
 @app.post("/api/capacity", response_model=schemas.Capacity)
 def create_capacity(capacity: schemas.CapacityCreate, db: Session = Depends(get_db)):
-    # Validate no overlapping date ranges
-    overlapping = db.query(models.Capacity).filter(
-        models.Capacity.commodity_id == capacity.commodity_id,
-        models.Capacity.location_id == capacity.location_id,
-        models.Capacity.delete == b'\x00' * 16,
-        models.Capacity.eff_dt_from <= capacity.eff_dt_to,
-        models.Capacity.eff_dt_to >= capacity.eff_dt_from
-    ).first()
-    
-    if overlapping:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Overlapping date range with existing capacity record (ID: {overlapping.id})"
+    try:
+        # Validate no overlapping date ranges
+        overlapping = db.query(models.Capacity).filter(
+            models.Capacity.commodity_id == capacity.commodity_id,
+            models.Capacity.location_id == capacity.location_id,
+            models.Capacity.delete == b'\x00' * 16,
+            models.Capacity.eff_dt_from <= capacity.eff_dt_to,
+            models.Capacity.eff_dt_to >= capacity.eff_dt_from
+        ).first()
+        
+        if overlapping:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Overlapping date range with existing capacity record (ID: {overlapping.id})"
+            )
+        
+        db_capacity = models.Capacity(
+            **capacity.model_dump(),
+            dt_last_modified=datetime.now().date(),
+            delete=b'\x00' * 16
         )
-    
-    db_capacity = models.Capacity(
-        **capacity.model_dump(),
-        dt_last_modified=datetime.now().date(),
-        delete=b'\x00' * 16
-    )
-    db.add(db_capacity)
-    db.commit()
-    db.refresh(db_capacity)
-    return db_capacity
+        db.add(db_capacity)
+        db.commit()
+        db.refresh(db_capacity)
+        return db_capacity
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create capacity: {str(e)}")
 
 @app.put("/api/capacity/{capacity_id}", response_model=schemas.Capacity)
 def update_capacity(capacity_id: int, capacity: schemas.CapacityUpdate, db: Session = Depends(get_db)):

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Typography,
   Paper,
@@ -26,6 +26,7 @@ import {
   Card,
   CardContent,
   Chip,
+  SelectChangeEvent,
 } from "@mui/material";
 import {
   Add,
@@ -47,6 +48,7 @@ import {
   exportBlends,
   importBlends,
 } from "../api";
+import { Blend, BlendComponent, Commodity } from '../types';
 import { useNavigate } from "react-router-dom";
 import {
   PieChart,
@@ -57,24 +59,35 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-function Blends() {
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B9D'];
+
+const Blends: React.FC = () => {
   const navigate = useNavigate();
-  const [blends, setBlends] = useState([]);
-  const [commodities, setCommodities] = useState([]);
-  const [blendComponents, setBlendComponents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [openViewDialog, setOpenViewDialog] = useState(false);
-  const [openImportDialog, setOpenImportDialog] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [currentBlend, setCurrentBlend] = useState({
+  const [blends, setBlends] = useState<Blend[]>([]);
+  const [commodities, setCommodities] = useState<Commodity[]>([]);
+  const [blendComponents, setBlendComponents] = useState<BlendComponent[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [openViewDialog, setOpenViewDialog] = useState<boolean>(false);
+  const [openImportDialog, setOpenImportDialog] = useState<boolean>(false);
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [currentBlend, setCurrentBlend] = useState<{
+    id?: number;
+    name: string;
+    description: string;
+    uom?: string;
+  }>({
     name: "",
     description: "",
-    commodity_id: "",
+    uom: "",
   });
-  const [viewingBlend, setViewingBlend] = useState(null);
-  const [blendComposition, setBlendComposition] = useState([]);
+  const [viewingBlend, setViewingBlend] = useState<Blend | null>(null);
+  const [blendComposition, setBlendComposition] = useState<Array<{
+    name: string;
+    value: number;
+    proportion: number;
+  }>>([]);
 
   useEffect(() => {
     fetchBlends();
@@ -100,16 +113,16 @@ function Blends() {
     }
   };
 
-  const handleViewBlend = (blend) => {
+  const handleViewBlend = (blend: Blend) => {
     setViewingBlend(blend);
 
     // Get all components for this blend
-    const components = blendComponents.filter((c) => c.blend_id === blend.id);
+    const components = blendComponents.filter((c) => c.blend_id === blend.id!);
 
     // Prepare data for pie chart
     const chartData = components.map((component) => ({
       name: component.commodity?.name || `Commodity ${component.commodity_id}`,
-      value: parseFloat(component.proportion) * 100,
+      value: component.proportion * 100,
       proportion: component.proportion,
     }));
 
@@ -137,18 +150,18 @@ function Blends() {
     }
   };
 
-  const handleOpenDialog = (blend = null) => {
+  const handleOpenDialog = (blend: Blend | null = null) => {
     if (blend) {
       setEditMode(true);
       setCurrentBlend({
         id: blend.id,
-        name: blend.name,
-        description: blend.description,
-        commodity_id: blend.commodity_id,
+        name: blend.name || "",
+        description: blend.description || "",
+        uom: blend.uom || "",
       });
     } else {
       setEditMode(false);
-      setCurrentBlend({ name: "", description: "", commodity_id: "" });
+      setCurrentBlend({ name: "", description: "", uom: "" });
     }
     setOpenDialog(true);
   };
@@ -160,10 +173,11 @@ function Blends() {
   const handleSave = async () => {
     try {
       const data = {
-        ...currentBlend,
-        commodity_id: parseInt(currentBlend.commodity_id),
+        name: currentBlend.name,
+        description: currentBlend.description,
+        uom: currentBlend.uom,
       };
-      if (editMode) {
+      if (editMode && currentBlend.id) {
         await updateBlend(currentBlend.id, data);
       } else {
         await createBlend(data);
@@ -176,7 +190,8 @@ function Blends() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number | undefined) => {
+    if (!id) return;
     if (window.confirm("Are you sure you want to delete this blend?")) {
       try {
         await deleteBlend(id);
@@ -188,9 +203,9 @@ function Blends() {
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>) => {
     const { name, value } = e.target;
-    setCurrentBlend((prev) => ({ ...prev, [name]: value }));
+    setCurrentBlend((prev) => ({ ...prev, [name as string]: value }));
   };
 
   if (loading) return <CircularProgress />;
@@ -252,7 +267,7 @@ function Blends() {
                 (c) => c.blend_id === blend.id
               );
               const totalProportion = components.reduce(
-                (sum, c) => sum + parseFloat(c.proportion || 0),
+                (sum, c) => sum + (c.proportion || 0),
                 0
               );
 
@@ -261,9 +276,7 @@ function Blends() {
                   <TableCell>{blend.id}</TableCell>
                   <TableCell>{blend.name}</TableCell>
                   <TableCell>{blend.description}</TableCell>
-                  <TableCell>
-                    {blend.commodity?.name || `ID: ${blend.commodity_id}`}
-                  </TableCell>
+                  <TableCell>{blend.uom || "N/A"}</TableCell>
                   <TableCell>
                     <Box display="flex" alignItems="center" gap={1}>
                       <Chip
@@ -337,17 +350,17 @@ function Blends() {
             onChange={handleInputChange}
             required
           />
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Commodity</InputLabel>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>UOM</InputLabel>
             <Select
-              name="commodity_id"
-              value={currentBlend.commodity_id}
+              name="uom"
+              value={currentBlend.uom || ''}
               onChange={handleInputChange}
-              label="Commodity"
+              label="UOM"
             >
               {commodities.map((commodity) => (
-                <MenuItem key={commodity.id} value={commodity.id}>
-                  {commodity.name}
+                <MenuItem key={commodity.id} value={commodity.uom}>
+                  {commodity.uom}
                 </MenuItem>
               ))}
             </Select>
@@ -402,11 +415,10 @@ function Blends() {
                     </Box>
                     <Box mb={2}>
                       <Typography variant="subtitle2" color="textSecondary">
-                        Base Commodity
+                        Unit of Measure
                       </Typography>
                       <Typography variant="body1">
-                        {viewingBlend.commodity?.name ||
-                          `ID: ${viewingBlend.commodity_id}`}
+                        {viewingBlend.uom || "N/A"}
                       </Typography>
                     </Box>
                   </CardContent>
@@ -437,7 +449,7 @@ function Blends() {
                             <TableRow key={index}>
                               <TableCell>{item.name}</TableCell>
                               <TableCell align="right">
-                                {parseFloat(item.proportion).toFixed(4)}
+                                {item.proportion.toFixed(4)}
                               </TableCell>
                               <TableCell align="right">
                                 <Chip
@@ -457,7 +469,7 @@ function Blends() {
                                 {blendComposition
                                   .reduce(
                                     (sum, item) =>
-                                      sum + parseFloat(item.proportion),
+                                      sum + item.proportion,
                                     0
                                   )
                                   .toFixed(4)}
@@ -502,14 +514,14 @@ function Blends() {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={(entry) =>
+                            label={(entry: any) =>
                               `${entry.name}: ${entry.value.toFixed(1)}%`
                             }
                             outerRadius={120}
                             fill="#8884d8"
                             dataKey="value"
                           >
-                            {blendComposition.map((entry, index) => (
+                            {blendComposition.map((_, index) => (
                               <Cell
                                 key={`cell-${index}`}
                                 fill={COLORS[index % COLORS.length]}
@@ -517,13 +529,13 @@ function Blends() {
                             ))}
                           </Pie>
                           <Tooltip
-                            formatter={(value) => `${value.toFixed(2)}%`}
+                            formatter={(value: any) => `${Number(value).toFixed(2)}%`}
                           />
                           <Legend
                             verticalAlign="bottom"
                             height={36}
-                            formatter={(value, entry) =>
-                              `${value}: ${entry.payload.value.toFixed(2)}%`
+                            formatter={(value: any, entry: any) =>
+                              `${value}: ${entry?.payload?.value?.toFixed(2) || 0}%`
                             }
                           />
                         </PieChart>
@@ -587,20 +599,6 @@ function Blends() {
       />
     </div>
   );
-}
-
-// Colors for pie chart
-const COLORS = [
-  "#0088FE",
-  "#00C49F",
-  "#FFBB28",
-  "#FF8042",
-  "#8884D8",
-  "#82CA9D",
-  "#FFC658",
-  "#FF6B6B",
-  "#4ECDC4",
-  "#45B7D1",
-];
+};
 
 export default Blends;

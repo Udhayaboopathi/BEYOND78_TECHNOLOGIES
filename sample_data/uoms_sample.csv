@@ -1,4 +1,4 @@
-name,type,base_uom,description
+UOM Name,Type,Base UOM,Description
 Metric Ton,Mass,kg,Metric ton unit for mass measurement
 Kilogram,Mass,kg,Base unit for mass
 Barrel,Volume,L,Standard barrel for oil measurement

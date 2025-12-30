@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Typography,
   Paper,
@@ -33,6 +33,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { getCommodities, createBlendWithComponents } from "../api";
+import type { Commodity } from '../types';
 import { useNavigate } from "react-router-dom";
 
 // Colors for pie chart
@@ -49,28 +50,34 @@ const COLORS = [
   "#45B7D1",
 ];
 
-function CreateBlend() {
+const CreateBlend: React.FC = () => {
   const navigate = useNavigate();
 
   // Blend basic info
-  const [blendName, setBlendName] = useState("");
-  const [blendDescription, setBlendDescription] = useState("");
-  const [baseCommodityId, setBaseCommodityId] = useState("");
+  const [blendName, setBlendName] = useState<string>("");
+  const [blendDescription, setBlendDescription] = useState<string>("");
+  const [baseCommodityId, setBaseCommodityId] = useState<string>("");
 
   // Components state
-  const [components, setComponents] = useState([
-    { id: Date.now(), commodity_id: "", proportion: "" },
-  ]);
+  const [components, setComponents] = useState<Array<{
+    id: number;
+    commodity_id: string;
+    proportion: string;
+  }>>([{ id: Date.now(), commodity_id: "", proportion: "" }]);
 
   // Master data
-  const [commodities, setCommodities] = useState([]);
+  const [commodities, setCommodities] = useState<Commodity[]>([]);
 
   // Validation and UI state
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [validationErrors, setValidationErrors] = useState({});
-  const [totalProportion, setTotalProportion] = useState(0);
-  const [chartData, setChartData] = useState([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [totalProportion, setTotalProportion] = useState<number>(0);
+  const [chartData, setChartData] = useState<Array<{
+    name: string;
+    value: number;
+    proportion: number;
+  }>>([]);
 
   useEffect(() => {
     fetchCommodities();
@@ -122,13 +129,13 @@ function CreateBlend() {
     ]);
   };
 
-  const removeComponent = (id) => {
+  const removeComponent = (id: number) => {
     if (components.length > 1) {
       setComponents(components.filter((comp) => comp.id !== id));
     }
   };
 
-  const updateComponent = (id, field, value) => {
+  const updateComponent = (id: number, field: string, value: string) => {
     setComponents(
       components.map((comp) =>
         comp.id === id ? { ...comp, [field]: value } : comp
@@ -138,8 +145,8 @@ function CreateBlend() {
     setValidationErrors({});
   };
 
-  const validateForm = () => {
-    const errors = {};
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
 
     // Validate blend name
     if (!blendName.trim()) {
@@ -166,7 +173,7 @@ function CreateBlend() {
     }
 
     // Check each component
-    components.forEach((comp, index) => {
+    components.forEach((comp, _index) => {
       if (!comp.commodity_id) {
         errors[`component_${comp.id}_commodity`] = "Commodity is required";
       }
@@ -227,11 +234,11 @@ function CreateBlend() {
 
       // Success - redirect to blends list
       alert(
-        `Blend "${response.data.blend.name}" created successfully with ${response.data.components.length} components!`
+        `Blend "${response.data.name}" created successfully with ${components.length} components!`
       );
       navigate("/blends");
-    } catch (err) {
-      const errorMsg = err.response?.data?.detail || "Failed to create blend";
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.detail || "Failed to create blend";
       setError(errorMsg);
       console.error(err);
     } finally {
@@ -249,16 +256,11 @@ function CreateBlend() {
     }
   };
 
-  const getCommodityName = (commodityId) => {
-    const commodity = commodities.find((c) => c.id === parseInt(commodityId));
-    return commodity?.name || "";
-  };
-
-  const isFormValid = () => {
+  const isFormValid = (): boolean => {
     return (
-      blendName.trim() &&
-      blendDescription.trim() &&
-      baseCommodityId &&
+      blendName.trim() !== '' &&
+      blendDescription.trim() !== '' &&
+      baseCommodityId !== '' &&
       components.every((c) => c.commodity_id && c.proportion) &&
       Math.abs(totalProportion - 1.0) < 0.001 &&
       Object.keys(validationErrors).length === 0
@@ -478,7 +480,7 @@ function CreateBlend() {
                           <TableCell align="right">
                             <Chip
                               label={`${(
-                                parseFloat(comp.proportion || 0) * 100
+                                parseFloat(comp.proportion || '0') * 100
                               ).toFixed(1)}%`}
                               size="small"
                               color={comp.proportion ? "primary" : "default"}
@@ -547,14 +549,14 @@ function CreateBlend() {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {chartData.map((entry, index) => (
+                        {chartData.map((_entry, index) => (
                           <Cell
                             key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}
                           />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value) => `${value.toFixed(2)}%`} />
+                      <Tooltip formatter={(value: any) => `${Number(value).toFixed(2)}%`} />
                       <Legend verticalAlign="bottom" height={36} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -702,6 +704,6 @@ function CreateBlend() {
       </Paper>
     </Box>
   );
-}
+};
 
 export default CreateBlend;

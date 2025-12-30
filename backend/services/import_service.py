@@ -190,17 +190,34 @@ class ImportService:
         # Validate and convert data types
         try:
             if col_config.data_type == "number":
-                return float(value)
+                converted_value = float(value)
             elif col_config.data_type == "date":
                 if isinstance(value, str):
-                    return datetime.strptime(value, "%Y-%m-%d").date().isoformat()
-                return value
+                    converted_value = datetime.strptime(value, "%Y-%m-%d").date().isoformat()
+                else:
+                    converted_value = value
             elif col_config.data_type == "boolean":
                 if isinstance(value, str):
-                    return value.lower() in ['true', '1', 'yes']
-                return bool(value)
+                    converted_value = value.lower() in ['true', '1', 'yes']
+                else:
+                    converted_value = bool(value)
             else:  # string
-                return str(value).strip()
+                converted_value = str(value).strip()
+            
+            # Apply custom validation if provided
+            if col_config.validation_fn:
+                is_valid, error_msg = col_config.validation_fn(self.db, converted_value)
+                if not is_valid:
+                    self.errors.append(ImportError(
+                        row_number=row_number,
+                        field=col_config.name,
+                        message=error_msg,
+                        value=converted_value
+                    ))
+                    return None
+            
+            return converted_value
+            
         except Exception as e:
             self.errors.append(ImportError(
                 row_number=row_number,
@@ -264,7 +281,8 @@ class ImportService:
                 
                 if existing_record and self.config.supports_update:
                     # Update existing record
-                    self._update_record(existing_record['id'], row_data)
+                    pk_column = self.config.primary_key
+                    self._update_record(existing_record[pk_column], row_data)
                     successful += 1
                 elif not existing_record and self.config.supports_create:
                     # Create new record
@@ -301,15 +319,18 @@ class ImportService:
         if not conditions:
             return None
         
+        # Use the configured primary key column name
+        pk_column = self.config.primary_key
+        
         query = text(f"""
-            SELECT id FROM {self.config.table_name}
+            SELECT {pk_column} FROM {self.config.table_name}
             WHERE {' AND '.join(conditions)}
             AND `delete` = 0x00000000000000000000000000000000
             LIMIT 1
         """)
         
         result = self.db.execute(query, params).fetchone()
-        return {"id": result[0]} if result else None
+        return {pk_column: result[0]} if result else None
     
     def _create_record(self, row_data: Dict[str, Any]):
         """Create new record"""
@@ -332,13 +353,16 @@ class ImportService:
         # Note: Timestamp fields should be included in the import data if needed
         # Different tables have different timestamp column names (update_at, UpdatedAt, dt_last_modified)
         
+        # Use the configured primary key column name
+        pk_column = self.config.primary_key
+        
         # Build UPDATE query - escape column names with backticks
         set_clauses = ', '.join([f"`{key}` = :{key}" for key in row_data.keys()])
         
         query = text(f"""
             UPDATE {self.config.table_name}
             SET {set_clauses}
-            WHERE id = :record_id
+            WHERE {pk_column} = :record_id
         """)
         
         params = {**row_data, 'record_id': record_id}

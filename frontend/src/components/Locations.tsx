@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Typography,
   Paper,
@@ -22,6 +22,7 @@ import {
   Select,
   FormControl,
   InputLabel,
+  SelectChangeEvent,
 } from "@mui/material";
 import { Add, Edit, Delete, Upload } from "@mui/icons-material";
 import ExportButton from "./ExportButton";
@@ -31,39 +32,31 @@ import {
   createLocation,
   updateLocation,
   deleteLocation,
-  getCounterParties,
   exportLocations,
   importLocations,
+  getCounterParties,
 } from "../api";
+import { Location, LocationFormData, CounterParty } from '../types';
 
-function Locations() {
-  const [locations, setLocations] = useState([]);
-  const [counterParties, setCounterParties] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [openImportDialog, setOpenImportDialog] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState({
+const Locations: React.FC = () => {
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [counterParties, setCounterParties] = useState<CounterParty[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [openImportDialog, setOpenImportDialog] = useState<boolean>(false);
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [currentLocation, setCurrentLocation] = useState<LocationFormData>({
     name: "",
     type: "",
     description: "",
-    parent_contvarcharerpartu_id: "",
+    parent_contvarcharerpartu_id: 0,
   });
 
   useEffect(() => {
     fetchLocations();
     fetchCounterParties();
   }, []);
-
-  const fetchCounterParties = async () => {
-    try {
-      const response = await getCounterParties();
-      setCounterParties(response.data);
-    } catch (err) {
-      console.error("Failed to fetch counter parties:", err);
-    }
-  };
 
   const fetchLocations = async () => {
     try {
@@ -79,15 +72,24 @@ function Locations() {
     }
   };
 
-  const handleOpenDialog = (location = null) => {
+  const fetchCounterParties = async () => {
+    try {
+      const response = await getCounterParties();
+      setCounterParties(response.data);
+    } catch (err) {
+      console.error("Failed to fetch counter parties:", err);
+    }
+  };
+
+  const handleOpenDialog = (location: Location | null = null) => {
     if (location) {
       setEditMode(true);
       setCurrentLocation({
         id: location.id,
-        name: location.name,
-        type: location.type,
-        description: location.description,
-        parent_contvarcharerpartu_id: location.parent_contvarcharerpartu_id,
+        name: location.name || "",
+        type: location.type || "",
+        description: location.description || "",
+        parent_contvarcharerpartu_id: location.parent_contvarcharerpartu_id || 0,
       });
     } else {
       setEditMode(false);
@@ -95,7 +97,7 @@ function Locations() {
         name: "",
         type: "",
         description: "",
-        parent_contvarcharerpartu_id: "",
+        parent_contvarcharerpartu_id: 0,
       });
     }
     setOpenDialog(true);
@@ -109,11 +111,9 @@ function Locations() {
     try {
       const data = {
         ...currentLocation,
-        parent_contvarcharerpartu_id: parseInt(
-          currentLocation.parent_contvarcharerpartu_id
-        ),
+        parent_id: currentLocation.parent_id ? parseInt(currentLocation.parent_id as string) : undefined,
       };
-      if (editMode) {
+      if (editMode && currentLocation.id) {
         await updateLocation(currentLocation.id, data);
       } else {
         await createLocation(data);
@@ -126,7 +126,8 @@ function Locations() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number | undefined) => {
+    if (!id) return;
     if (window.confirm("Are you sure you want to delete this location?")) {
       try {
         await deleteLocation(id);
@@ -138,7 +139,7 @@ function Locations() {
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent) => {
     const { name, value } = e.target;
     setCurrentLocation((prev) => ({ ...prev, [name]: value }));
   };
@@ -196,8 +197,7 @@ function Locations() {
                 <TableCell>{location.type}</TableCell>
                 <TableCell>{location.description}</TableCell>
                 <TableCell>
-                  {location.counter_party?.LegalName ||
-                    `ID: ${location.parent_contvarcharerpartu_id}`}
+                  {location.parent_id ? `Parent ID: ${location.parent_id}` : "N/A"}
                 </TableCell>
                 <TableCell>
                   <IconButton
@@ -258,16 +258,16 @@ function Locations() {
             <InputLabel>Parent Counterparty</InputLabel>
             <Select
               name="parent_contvarcharerpartu_id"
-              value={currentLocation.parent_contvarcharerpartu_id}
-              onChange={handleInputChange}
+              value={currentLocation.parent_contvarcharerpartu_id || ''}
+              onChange={(e) => setCurrentLocation((prev) => ({ ...prev, parent_contvarcharerpartu_id: Number(e.target.value) }))}
               label="Parent Counterparty"
             >
-              {counterParties.map((party) => (
+              {counterParties.map((cp) => (
                 <MenuItem
-                  key={party.CounterpartyID}
-                  value={party.CounterpartyID}
+                  key={cp.CounterpartyID}
+                  value={cp.CounterpartyID}
                 >
-                  {party.LegalName}
+                  {cp.LegalName}
                 </MenuItem>
               ))}
             </Select>
@@ -285,9 +285,10 @@ function Locations() {
         open={openImportDialog}
         onClose={() => setOpenImportDialog(false)}
         onImport={importLocations}
-        title="Import Locations"
+        entityName="Locations"
         entityKey="locations"
         onSuccess={fetchLocations}
+        templateColumns={['name', 'type', 'description', 'parent_id', 'country', 'region', 'is_active']}
       />
     </div>
   );
