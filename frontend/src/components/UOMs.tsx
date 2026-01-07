@@ -1,25 +1,21 @@
 import { useState, useEffect } from "react";
 import {
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  CircularProgress,
-  Alert,
+  Title,
   Button,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Box,
-} from "@mui/material";
-import { Add, Edit, Delete, Upload } from "@mui/icons-material";
+  Modal,
+  ModalVariant,
+  Form,
+  FormGroup,
+  TextInput,
+  TextArea,
+  Alert,
+  AlertVariant,
+  Spinner,
+  ActionList,
+  ActionListItem,
+} from "@patternfly/react-core";
+import { PlusCircleIcon, UploadIcon, TrashIcon } from "@patternfly/react-icons";
+import { DataTable, Column } from "./DataTable";
 import ExportButton from "./ExportButton";
 import EnhancedImportDialog from "./EnhancedImportDialog";
 import {
@@ -131,136 +127,126 @@ const UOMs: React.FC = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+  const handleInputChange = (value: string, name: string) => {
     setCurrentUOM((prev) => ({ ...prev, [name]: value }));
   };
 
-  if (loading) return <CircularProgress />;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  if (loading) return <Spinner size="xl" />;
+  if (error) return <Alert variant={AlertVariant.danger} title={error} />;
+
+  const columns: Column[] = [
+    { key: 'id', title: 'ID' },
+    { key: 'name', title: 'Name' },
+    { key: 'type', title: 'Type' },
+    { key: 'base_uom', title: 'Base UOM' },
+    { key: 'description', title: 'Description' },
+  ];
 
   return (
     <div>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-      >
-        <Typography variant="h4">Units of Measurement (UOMs)</Typography>
-        <Box display="flex" gap={2}>
-          <ExportButton onExport={exportUOMs} label="Export UOMs" />
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<Upload />}
-            onClick={() => setOpenImportDialog(true)}
-          >
-            Import UOMs
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Add UOM
-          </Button>
-        </Box>
-      </Box>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+        <Title headingLevel="h1">Units of Measurement (UOMs)</Title>
+      </div>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Base UOM</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {uoms.map((uom) => (
-              <TableRow key={uom.id}>
-                <TableCell>{uom.id}</TableCell>
-                <TableCell>{uom.name}</TableCell>
-                <TableCell>{uom.type}</TableCell>
-                <TableCell>{uom.base_uom}</TableCell>
-                <TableCell>{uom.description}</TableCell>
-                <TableCell>
-                  <IconButton
-                    color="primary"
-                    onClick={() => handleOpenDialog(uom)}
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    color="error"
-                    onClick={() => handleDelete(uom.id)}
-                  >
-                    <Delete />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <DataTable
+        data={uoms}
+        columns={columns}
+        getRowId={(uom) => uom.id || 0}
+        onEdit={handleOpenDialog}
+        onDelete={(uom) => handleDelete(uom.id)}
+        bulkActions={(selectedIds) => (
+          <Button
+            variant="danger"
+            icon={<TrashIcon />}
+            onClick={() => {
+              if (window.confirm(`Delete ${selectedIds.length} selected UOMs?`)) {
+                selectedIds.forEach(id => handleDelete(id as number));
+              }
+            }}
+          >
+            Delete Selected ({selectedIds.length})
+          </Button>
+        )}
+        actions={
+          <ActionList>
+            <ActionListItem>
+              <ExportButton onExport={exportUOMs} label="Export" />
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="secondary"
+                icon={<UploadIcon />}
+                onClick={() => setOpenImportDialog(true)}
+              >
+                Import
+              </Button>
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="primary"
+                icon={<PlusCircleIcon />}
+                onClick={() => handleOpenDialog()}
+              >
+                Add UOM
+              </Button>
+            </ActionListItem>
+          </ActionList>
+        }
+      />
 
-      <Dialog
-        open={openDialog}
+      <Modal
+        variant={ModalVariant.medium}
+        title={editMode ? "Edit UOM" : "Add UOM"}
+        isOpen={openDialog}
         onClose={handleCloseDialog}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>{editMode ? "Edit UOM" : "Add UOM"}</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Name"
-            name="name"
-            value={currentUOM.name}
-            onChange={handleInputChange}
-            required
-          />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Type"
-            name="type"
-            value={currentUOM.type}
-            onChange={handleInputChange}
-            required
-          />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Base Conversion"
-            name="base_uom"
-            type="number"
-            value={currentUOM.base_uom}
-            onChange={handleInputChange}
-          />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Description"
-            name="description"
-            value={currentUOM.description}
-            onChange={handleInputChange}
-            required
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" color="primary">
+        actions={[
+          <Button key="save" variant="primary" onClick={handleSave}>
             {editMode ? "Update" : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </Button>,
+          <Button key="cancel" variant="link" onClick={handleCloseDialog}>
+            Cancel
+          </Button>,
+        ]}
+      >
+        <Form>
+          <FormGroup label="Name" isRequired fieldId="name">
+            <TextInput
+              id="name"
+              name="name"
+              value={currentUOM.name}
+              onChange={(_, value) => handleInputChange(value, "name")}
+              isRequired
+            />
+          </FormGroup>
+          <FormGroup label="Type" isRequired fieldId="type">
+            <TextInput
+              id="type"
+              name="type"
+              value={currentUOM.type}
+              onChange={(_, value) => handleInputChange(value, "type")}
+              isRequired
+            />
+          </FormGroup>
+          <FormGroup label="Base Conversion" fieldId="base_uom">
+            <TextInput
+              id="base_uom"
+              name="base_uom"
+              type="number"
+              value={currentUOM.base_uom}
+              onChange={(_, value) => handleInputChange(value, "base_uom")}
+            />
+          </FormGroup>
+          <FormGroup label="Description" isRequired fieldId="description">
+            <TextArea
+              id="description"
+              name="description"
+              value={currentUOM.description}
+              onChange={(_, value) => handleInputChange(value, "description")}
+              isRequired
+            />
+          </FormGroup>
+        </Form>
+      </Modal>
 
       <EnhancedImportDialog
         open={openImportDialog}

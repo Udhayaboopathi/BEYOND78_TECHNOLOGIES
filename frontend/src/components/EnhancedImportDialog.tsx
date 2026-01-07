@@ -1,24 +1,25 @@
 import React, { useState } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Modal,
+  ModalVariant,
   Button,
-  Box,
-  Typography,
   Alert,
-  CircularProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
+  AlertVariant,
+  Spinner,
+  ExpandableSection,
+  Title,
+  List,
+  ListItem,
+} from "@patternfly/react-core";
+import {
   Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-} from "@mui/material";
-import { CloudUpload, ExpandMore, Download } from "@mui/icons-material";
+  Thead,
+  Tr,
+  Th,
+  Tbody,
+  Td,
+} from "@patternfly/react-table";
+import { DownloadIcon, UploadIcon } from "@patternfly/react-icons";
 import { downloadTemplate } from "../api";
 import { EnhancedImportDialogProps, ImportResult } from '../types';
 
@@ -146,166 +147,142 @@ const EnhancedImportDialog: React.FC<EnhancedImportDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <DialogTitle>Import {entityName}</DialogTitle>
-      <DialogContent>
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
-            Download the template, fill in your data, and upload the completed
-            file.
-          </Typography>
-
-          <Button
-            variant="outlined"
-            startIcon={
-              downloadingTemplate ? (
-                <CircularProgress size={20} />
-              ) : (
-                <Download />
-              )
-            }
-            onClick={handleDownloadTemplate}
-            disabled={downloadingTemplate}
-            sx={{ mt: 1 }}
-          >
-            {downloadingTemplate ? "Downloading..." : "Download Template"}
-          </Button>
-        </Box>
-
-        <Box
-          sx={{
-            border: "2px dashed #ccc",
-            borderRadius: 2,
-            p: 3,
-            textAlign: "center",
-            bgcolor: "#f9f9f9",
-            mb: 2,
-          }}
-        >
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            onChange={handleFileChange}
-            style={{ display: "none" }}
-            id="import-file-input"
-          />
-          <label htmlFor="import-file-input">
-            <Button
-              variant="contained"
-              component="span"
-              startIcon={<CloudUpload />}
-            >
-              Select File
-            </Button>
-          </label>
-          {selectedFile && (
-            <Typography variant="body2" sx={{ mt: 2 }}>
-              Selected: <strong>{selectedFile.name}</strong>
-            </Typography>
-          )}
-        </Box>
-
-        {loading && (
-          <Box sx={{ display: "flex", justifyContent: "center", my: 3 }}>
-            <CircularProgress />
-            <Typography variant="body2" sx={{ ml: 2, mt: 1 }}>
-              Processing import...
-            </Typography>
-          </Box>
-        )}
-
-        {result && (
-          <Box sx={{ mt: 2 }}>
-            <Alert
-              severity={
-                (result.summary?.failed === 0 || result.failed?.length === 0)
-                  ? "success"
-                  : (result.summary?.successful === 0 || result.successful?.length === 0)
-                  ? "error"
-                  : "warning"
-              }
-              sx={{ mb: 2 }}
-            >
-              <Typography variant="body2">
-                <strong>{result.message}</strong>
-              </Typography>
-              <Typography variant="caption">
-                {(result.summary?.successful || result.successful?.length || 0) > 0 &&
-                  `✓ ${result.summary?.successful || result.successful?.length} records imported successfully. `}
-                {(result.summary?.failed || result.failed?.length || 0) > 0 && `✗ ${result.summary?.failed || result.failed?.length} records failed.`}
-              </Typography>
-            </Alert>
-
-            {result.errors && result.errors.length > 0 && (
-              <Accordion>
-                <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography variant="subtitle2" color="error">
-                    View {result.errors.length} Error(s)
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>
-                          <strong>Row</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Field</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Error</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Value</strong>
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {result.errors.map((error, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell>{error.row || "-"}</TableCell>
-                          <TableCell>{error.field}</TableCell>
-                          <TableCell>{error.message}</TableCell>
-                          <TableCell>{error.value || "-"}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </AccordionDetails>
-              </Accordion>
-            )}
-          </Box>
-        )}
-
-        <Box sx={{ mt: 3, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}>
-          <Typography variant="caption" color="text.secondary">
-            <strong>💡 Tips:</strong>
-            <ul style={{ margin: "8px 0", paddingLeft: "20px" }}>
-              <li>Use the template to ensure correct column format</li>
-              <li>Required fields must have values</li>
-              <li>
-                For updates, include records with matching unique identifiers
-              </li>
-              <li>Supported formats: CSV, Excel (.xlsx, .xls)</li>
-            </ul>
-          </Typography>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} disabled={loading}>
-          Close
-        </Button>
+    <Modal
+      variant={ModalVariant.medium}
+      title={`Import ${entityName}`}
+      isOpen={open}
+      onClose={handleClose}
+      actions={[
         <Button
+          key="import"
+          variant="primary"
           onClick={handleImport}
-          variant="contained"
-          color="primary"
-          disabled={!selectedFile || loading}
+          isDisabled={!selectedFile || loading}
         >
           Import
+        </Button>,
+        <Button key="close" variant="link" onClick={handleClose} isDisabled={loading}>
+          Close
+        </Button>,
+      ]}
+    >
+      <div style={{ marginBottom: "1rem" }}>
+        <p style={{ marginBottom: "0.5rem", fontSize: "0.875rem" }}>
+          Download the template, fill in your data, and upload the completed file.
+        </p>
+
+        <Button
+          variant="secondary"
+          icon={downloadingTemplate ? <Spinner size="md" /> : <DownloadIcon />}
+          onClick={handleDownloadTemplate}
+          isDisabled={downloadingTemplate}
+          style={{ marginTop: "0.5rem" }}
+        >
+          {downloadingTemplate ? "Downloading..." : "Download Template"}
         </Button>
-      </DialogActions>
-    </Dialog>
+      </div>
+
+      <div
+        style={{
+          border: "2px dashed #ccc",
+          borderRadius: "4px",
+          padding: "1.5rem",
+          textAlign: "center",
+          backgroundColor: "#f9f9f9",
+          marginBottom: "1rem",
+        }}
+      >
+        <input
+          type="file"
+          accept=".csv,.xlsx,.xls"
+          onChange={handleFileChange}
+          style={{ display: "none" }}
+          id="import-file-input"
+        />
+        <label htmlFor="import-file-input">
+          <Button
+            variant="primary"
+            component="span"
+            icon={<UploadIcon />}
+          >
+            Select File
+          </Button>
+        </label>
+        {selectedFile && (
+          <p style={{ marginTop: "1rem", fontSize: "0.875rem" }}>
+            Selected: <strong>{selectedFile.name}</strong>
+          </p>
+        )}
+      </div>
+
+      {loading && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", margin: "1.5rem 0" }}>
+          <Spinner size="lg" />
+          <p style={{ marginLeft: "0.5rem", fontSize: "0.875rem" }}>
+            Processing import...
+          </p>
+        </div>
+      )}
+
+      {result && (
+        <div style={{ marginTop: "1rem" }}>
+          <Alert
+            variant={
+              (result.summary?.failed === 0 || result.failed?.length === 0)
+                ? AlertVariant.success
+                : (result.summary?.successful === 0 || result.successful?.length === 0)
+                ? AlertVariant.danger
+                : AlertVariant.warning
+            }
+            title={result.message || "Import completed"}
+            style={{ marginBottom: "1rem" }}
+          >
+            <p style={{ fontSize: "0.875rem" }}>
+              {(result.summary?.successful || result.successful?.length || 0) > 0 &&
+                `✓ ${result.summary?.successful || result.successful?.length} records imported successfully. `}
+              {(result.summary?.failed || result.failed?.length || 0) > 0 && `✗ ${result.summary?.failed || result.failed?.length} records failed.`}
+            </p>
+          </Alert>
+
+          {result.errors && result.errors.length > 0 && (
+            <ExpandableSection toggleText={`View ${result.errors.length} Error(s)`}>
+              <Table>
+                <Thead>
+                  <Tr>
+                    <Th>Row</Th>
+                    <Th>Field</Th>
+                    <Th>Error</Th>
+                    <Th>Value</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {result.errors.map((error, idx) => (
+                    <Tr key={idx}>
+                      <Td>{error.row || "-"}</Td>
+                      <Td>{error.field}</Td>
+                      <Td>{error.message}</Td>
+                      <Td>{error.value || "-"}</Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </ExpandableSection>
+          )}
+        </div>
+      )}
+
+      <div style={{ marginTop: "1.5rem", padding: "1rem", backgroundColor: "#f5f5f5", borderRadius: "4px" }}>
+        <div style={{ fontSize: "0.875rem" }}>
+          <strong>💡 Tips:</strong>
+          <List>
+            <ListItem>Use the template to ensure correct column format</ListItem>
+            <ListItem>Required fields must have values</ListItem>
+            <ListItem>For updates, include records with matching unique identifiers</ListItem>
+            <ListItem>Supported formats: CSV, Excel (.xlsx, .xls)</ListItem>
+          </List>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

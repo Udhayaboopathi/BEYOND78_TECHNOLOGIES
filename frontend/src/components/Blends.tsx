@@ -1,41 +1,31 @@
 import { useState, useEffect } from "react";
 import {
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  CircularProgress,
-  Alert,
+  Title,
   Button,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Box,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-  Grid,
+  Modal,
+  ModalVariant,
+  TextInput,
+  FormGroup,
+  FormSelect,
+  FormSelectOption,
+  Alert,
+  AlertVariant,
+  Spinner,
+  Label,
   Card,
-  CardContent,
-  Chip,
-  SelectChangeEvent,
-} from "@mui/material";
+  CardBody,
+  ActionList,
+  ActionListItem,
+} from "@patternfly/react-core";
+import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
 import {
-  Add,
-  Edit,
-  Delete,
-  Visibility,
-  AddCircle,
-  Upload,
-} from "@mui/icons-material";
+  PlusCircleIcon,
+  TrashIcon,
+  EyeIcon,
+  PlusCircleIcon as AddCircleIcon,
+  UploadIcon,
+} from "@patternfly/react-icons";
+import { DataTable, Column } from "./DataTable";
 import ExportButton from "./ExportButton";
 import ImportDialog from "./ImportDialog";
 import {
@@ -203,386 +193,366 @@ const Blends: React.FC = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>) => {
-    const { name, value } = e.target;
-    setCurrentBlend((prev) => ({ ...prev, [name as string]: value }));
+  const handleInputChange = (value: string, name: string) => {
+    setCurrentBlend((prev) => ({ ...prev, [name]: value }));
   };
 
-  if (loading) return <CircularProgress />;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  if (loading) return <Spinner />;
+  if (error) return <Alert variant={AlertVariant.danger} title={error} />;
+
+  const columns: Column[] = [
+    { key: 'id', title: 'ID' },
+    { key: 'name', title: 'Name' },
+    { key: 'description', title: 'Description' },
+    { key: 'uom', title: 'Commodity' },
+    { key: 'components', title: 'Components' },
+    { key: 'view', title: 'View' },
+  ];
+
+  const renderCell = (blend: Blend, columnKey: string) => {
+    switch (columnKey) {
+      case 'uom':
+        return blend.uom || 'N/A';
+      case 'components': {
+        const components = blendComponents.filter((c) => c.blend_id === blend.id);
+        const totalProportion = components.reduce((sum, c) => sum + (c.proportion || 0), 0);
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Label color="blue" variant="outline">
+              {components.length} commodities
+            </Label>
+            <Label color={Math.abs(totalProportion - 1) < 0.01 ? "green" : "orange"}>
+              {(totalProportion * 100).toFixed(0)}%
+            </Label>
+          </div>
+        );
+      }
+      case 'view':
+        return (
+          <Button
+            variant="plain"
+            icon={<EyeIcon />}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewBlend(blend);
+            }}
+            aria-label="View Details"
+          >
+            View
+          </Button>
+        );
+      default:
+        return (blend as any)[columnKey];
+    }
+  };
 
   return (
     <div>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1rem",
+        }}
       >
-        <Typography variant="h4">Blends</Typography>
-        <Box display="flex" gap={2}>
-          <ExportButton onExport={exportBlends} label="Export Blends" />
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<Upload />}
-            onClick={() => setOpenImportDialog(true)}
-          >
-            Import Blends
-          </Button>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<AddCircle />}
-            onClick={() => navigate("/create-blend")}
-          >
-            Create Blend with Components
-          </Button>
-          <Button
-            variant="outlined"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Quick Add Blend
-          </Button>
-        </Box>
-      </Box>
+        <Title headingLevel="h1">Blends</Title>
+      </div>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell>Commodity</TableCell>
-              <TableCell>Components</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {blends.map((blend) => {
-              const components = blendComponents.filter(
-                (c) => c.blend_id === blend.id
-              );
-              const totalProportion = components.reduce(
-                (sum, c) => sum + (c.proportion || 0),
-                0
-              );
+      <DataTable
+        data={blends}
+        columns={columns}
+        getRowId={(blend) => blend.id || 0}
+        onEdit={handleOpenDialog}
+        onDelete={(blend) => handleDelete(blend.id)}
+        renderCell={renderCell}
+        bulkActions={(selectedIds) => (
+          <Button
+            variant="danger"
+            icon={<TrashIcon />}
+            onClick={() => {
+              if (window.confirm(`Delete ${selectedIds.length} selected blends?`)) {
+                selectedIds.forEach(id => handleDelete(id as number));
+              }
+            }}
+          >
+            Delete Selected ({selectedIds.length})
+          </Button>
+        )}
+        actions={
+          <ActionList>
+            <ActionListItem>
+              <ExportButton onExport={exportBlends} label="Export" />
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="secondary"
+                icon={<UploadIcon />}
+                onClick={() => setOpenImportDialog(true)}
+              >
+                Import
+              </Button>
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="success"
+                icon={<AddCircleIcon />}
+                onClick={() => navigate("/create-blend")}
+              >
+                Create Blend with Components
+              </Button>
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="primary"
+                icon={<PlusCircleIcon />}
+                onClick={() => handleOpenDialog()}
+              >
+                Quick Add Blend
+              </Button>
+            </ActionListItem>
+          </ActionList>
+        }
+      />
 
-              return (
-                <TableRow key={blend.id}>
-                  <TableCell>{blend.id}</TableCell>
-                  <TableCell>{blend.name}</TableCell>
-                  <TableCell>{blend.description}</TableCell>
-                  <TableCell>{blend.uom || "N/A"}</TableCell>
-                  <TableCell>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Chip
-                        label={`${components.length} commodities`}
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                      />
-                      <Chip
-                        label={`${(totalProportion * 100).toFixed(0)}%`}
-                        size="small"
-                        color={
-                          Math.abs(totalProportion - 1) < 0.01
-                            ? "success"
-                            : "warning"
-                        }
-                      />
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <IconButton
-                      color="info"
-                      onClick={() => handleViewBlend(blend)}
-                      title="View Details & Chart"
-                    >
-                      <Visibility />
-                    </IconButton>
-                    <IconButton
-                      color="primary"
-                      onClick={() => handleOpenDialog(blend)}
-                    >
-                      <Edit />
-                    </IconButton>
-                    <IconButton
-                      color="error"
-                      onClick={() => handleDelete(blend.id)}
-                    >
-                      <Delete />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <Dialog
-        open={openDialog}
+      <Modal
+        variant={ModalVariant.medium}
+        title={editMode ? "Edit Blend" : "Add Blend"}
+        isOpen={openDialog}
         onClose={handleCloseDialog}
-        maxWidth="md"
-        fullWidth
+        actions={[
+          <Button key="save" variant="primary" onClick={handleSave}>
+            {editMode ? "Update" : "Create"}
+          </Button>,
+          <Button key="cancel" variant="link" onClick={handleCloseDialog}>
+            Cancel
+          </Button>,
+        ]}
       >
-        <DialogTitle>{editMode ? "Edit Blend" : "Add Blend"}</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Name"
+        <FormGroup label="Name" isRequired fieldId="name">
+          <TextInput
+            isRequired
+            type="text"
+            id="name"
             name="name"
             value={currentBlend.name}
-            onChange={handleInputChange}
-            required
+            onChange={(event, value) => handleInputChange(value, "name")}
           />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Description"
+        </FormGroup>
+        <FormGroup label="Description" isRequired fieldId="description">
+          <TextInput
+            isRequired
+            type="text"
+            id="description"
             name="description"
             value={currentBlend.description}
-            onChange={handleInputChange}
-            required
+            onChange={(event, value) => handleInputChange(value, "description")}
           />
-          <FormControl fullWidth margin="normal">
-            <InputLabel>UOM</InputLabel>
-            <Select
-              name="uom"
-              value={currentBlend.uom || ''}
-              onChange={handleInputChange}
-              label="UOM"
-            >
-              {commodities.map((commodity) => (
-                <MenuItem key={commodity.id} value={commodity.uom?.name || ''}>
-                  {commodity.uom?.name || 'N/A'}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" color="primary">
-            {editMode ? "Update" : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </FormGroup>
+        <FormGroup label="UOM" fieldId="uom">
+          <FormSelect
+            value={currentBlend.uom || ''}
+            onChange={(event, value) => handleInputChange(value, "uom")}
+            aria-label="UOM"
+          >
+            <FormSelectOption key="placeholder" value="" label="Select UOM" />
+            {commodities.map((commodity) => (
+              <FormSelectOption
+                key={commodity.id}
+                value={commodity.uom?.name || ''}
+                label={commodity.uom?.name || 'N/A'}
+              />
+            ))}
+          </FormSelect>
+        </FormGroup>
+      </Modal>
 
       {/* View Blend Details Dialog with Pie Chart */}
-      <Dialog
-        open={openViewDialog}
+      <Modal
+        variant={ModalVariant.large}
+        title={`Blend Details: ${viewingBlend?.name}`}
+        isOpen={openViewDialog}
         onClose={handleCloseViewDialog}
-        maxWidth="lg"
-        fullWidth
+        actions={[
+          <Button key="close" variant="primary" onClick={handleCloseViewDialog}>
+            Close
+          </Button>,
+        ]}
       >
-        <DialogTitle>Blend Details: {viewingBlend?.name}</DialogTitle>
-        <DialogContent>
-          {viewingBlend && (
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom color="primary">
-                      Blend Information
-                    </Typography>
-                    <Box mb={2}>
-                      <Typography variant="subtitle2" color="textSecondary">
-                        ID
-                      </Typography>
-                      <Typography variant="body1">{viewingBlend.id}</Typography>
-                    </Box>
-                    <Box mb={2}>
-                      <Typography variant="subtitle2" color="textSecondary">
-                        Name
-                      </Typography>
-                      <Typography variant="body1">
-                        {viewingBlend.name}
-                      </Typography>
-                    </Box>
-                    <Box mb={2}>
-                      <Typography variant="subtitle2" color="textSecondary">
-                        Description
-                      </Typography>
-                      <Typography variant="body1">
-                        {viewingBlend.description}
-                      </Typography>
-                    </Box>
-                    <Box mb={2}>
-                      <Typography variant="subtitle2" color="textSecondary">
-                        Unit of Measure
-                      </Typography>
-                      <Typography variant="body1">
-                        {viewingBlend.uom || "N/A"}
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                </Card>
+        {viewingBlend && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+            <div>
+              <Card>
+                <CardBody>
+                  <Title headingLevel="h3" style={{ color: "#06c", marginBottom: "1rem" }}>
+                    Blend Information
+                  </Title>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <div style={{ fontSize: "0.875rem", color: "#6a6e73", marginBottom: "0.25rem" }}>
+                      ID
+                    </div>
+                    <div>{viewingBlend.id}</div>
+                  </div>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <div style={{ fontSize: "0.875rem", color: "#6a6e73", marginBottom: "0.25rem" }}>
+                      Name
+                    </div>
+                    <div>{viewingBlend.name}</div>
+                  </div>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <div style={{ fontSize: "0.875rem", color: "#6a6e73", marginBottom: "0.25rem" }}>
+                      Description
+                    </div>
+                    <div>{viewingBlend.description}</div>
+                  </div>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <div style={{ fontSize: "0.875rem", color: "#6a6e73", marginBottom: "0.25rem" }}>
+                      Unit of Measure
+                    </div>
+                    <div>{viewingBlend.uom || "N/A"}</div>
+                  </div>
+                </CardBody>
+              </Card>
 
-                <Card sx={{ mt: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom color="primary">
-                      Composition Details
-                    </Typography>
-                    <TableContainer>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>
-                              <strong>Commodity</strong>
-                            </TableCell>
-                            <TableCell align="right">
-                              <strong>Proportion</strong>
-                            </TableCell>
-                            <TableCell align="right">
-                              <strong>Percentage</strong>
-                            </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {blendComposition.map((item, index) => (
-                            <TableRow key={index}>
-                              <TableCell>{item.name}</TableCell>
-                              <TableCell align="right">
-                                {item.proportion.toFixed(4)}
-                              </TableCell>
-                              <TableCell align="right">
-                                <Chip
-                                  label={`${item.value.toFixed(2)}%`}
-                                  size="small"
-                                  color="primary"
-                                />
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                          <TableRow>
-                            <TableCell>
-                              <strong>Total</strong>
-                            </TableCell>
-                            <TableCell align="right">
-                              <strong>
-                                {blendComposition
-                                  .reduce(
-                                    (sum, item) =>
-                                      sum + item.proportion,
-                                    0
-                                  )
-                                  .toFixed(4)}
-                              </strong>
-                            </TableCell>
-                            <TableCell align="right">
-                              <Chip
-                                label={`${blendComposition
-                                  .reduce((sum, item) => sum + item.value, 0)
-                                  .toFixed(2)}%`}
-                                color={
-                                  Math.abs(
-                                    blendComposition.reduce(
-                                      (sum, item) => sum + item.value,
-                                      0
-                                    ) - 100
-                                  ) < 1
-                                    ? "success"
-                                    : "warning"
-                                }
-                              />
-                            </TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom color="primary">
-                      Composition Pie Chart
-                    </Typography>
-                    {blendComposition.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={400}>
-                        <PieChart>
-                          <Pie
-                            data={blendComposition}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={(entry: any) =>
-                              `${entry.name}: ${entry.value.toFixed(1)}%`
+              <Card style={{ marginTop: "1rem" }}>
+                <CardBody>
+                  <Title headingLevel="h3" style={{ color: "#06c", marginBottom: "1rem" }}>
+                    Composition Details
+                  </Title>
+                  <Table aria-label="Composition table" variant="compact">
+                    <Thead>
+                      <Tr>
+                        <Th><strong>Commodity</strong></Th>
+                        <Th modifier="fitContent"><strong>Proportion</strong></Th>
+                        <Th modifier="fitContent"><strong>Percentage</strong></Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {blendComposition.map((item, index) => (
+                        <Tr key={index}>
+                          <Td>{item.name}</Td>
+                          <Td modifier="fitContent">
+                            {item.proportion.toFixed(4)}
+                          </Td>
+                          <Td modifier="fitContent">
+                            <Label color="blue">
+                              {item.value.toFixed(2)}%
+                            </Label>
+                          </Td>
+                        </Tr>
+                      ))}
+                      <Tr>
+                        <Td><strong>Total</strong></Td>
+                        <Td modifier="fitContent">
+                          <strong>
+                            {blendComposition
+                              .reduce(
+                                (sum, item) =>
+                                  sum + item.proportion,
+                                0
+                              )
+                              .toFixed(4)}
+                          </strong>
+                        </Td>
+                        <Td modifier="fitContent">
+                          <Label
+                            color={
+                              Math.abs(
+                                blendComposition.reduce(
+                                  (sum, item) => sum + item.value,
+                                  0
+                                ) - 100
+                              ) < 1
+                                ? "green"
+                                : "orange"
                             }
-                            outerRadius={120}
-                            fill="#8884d8"
-                            dataKey="value"
                           >
-                            {blendComposition.map((_, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={COLORS[index % COLORS.length]}
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            formatter={(value: any) => `${Number(value).toFixed(2)}%`}
-                          />
-                          <Legend
-                            verticalAlign="bottom"
-                            height={36}
-                            formatter={(value: any, entry: any) =>
-                              `${value}: ${entry?.payload?.value?.toFixed(2) || 0}%`
-                            }
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <Alert severity="info">
-                        No components defined for this blend yet.
-                      </Alert>
-                    )}
-                  </CardContent>
-                </Card>
+                            {blendComposition
+                              .reduce((sum, item) => sum + item.value, 0)
+                              .toFixed(2)}%
+                          </Label>
+                        </Td>
+                      </Tr>
+                    </Tbody>
+                  </Table>
+                </CardBody>
+              </Card>
+            </div>
 
-                {blendComposition.length > 0 && (
-                  <Card sx={{ mt: 2 }}>
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom color="primary">
-                        Validation Status
-                      </Typography>
-                      {Math.abs(
-                        blendComposition.reduce(
-                          (sum, item) => sum + item.value,
-                          0
-                        ) - 100
-                      ) < 1 ? (
-                        <Alert severity="success">
-                          ✓ Total proportion equals 100% - Blend is valid!
-                        </Alert>
-                      ) : (
-                        <Alert severity="warning">
-                          ⚠ Total proportion is{" "}
-                          {blendComposition
-                            .reduce((sum, item) => sum + item.value, 0)
-                            .toFixed(2)}
-                          % - Should equal 100%
-                        </Alert>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </Grid>
-            </Grid>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseViewDialog}>Close</Button>
-        </DialogActions>
-      </Dialog>
+            <div>
+              <Card>
+                <CardBody>
+                  <Title headingLevel="h3" style={{ color: "#06c", marginBottom: "1rem" }}>
+                    Composition Pie Chart
+                  </Title>
+                  {blendComposition.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={400}>
+                      <PieChart>
+                        <Pie
+                          data={blendComposition}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={(entry: any) =>
+                            `${entry.name}: ${entry.value.toFixed(1)}%`
+                          }
+                          outerRadius={120}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {blendComposition.map((_, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value: any) => `${Number(value).toFixed(2)}%`}
+                        />
+                        <Legend
+                          verticalAlign="bottom"
+                          height={36}
+                          formatter={(value: any, entry: any) =>
+                            `${value}: ${entry?.payload?.value?.toFixed(2) || 0}%`
+                          }
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <Alert variant={AlertVariant.info} title="No components defined for this blend yet." />
+                  )}
+                </CardBody>
+              </Card>
+
+              {blendComposition.length > 0 && (
+                <Card style={{ marginTop: "1rem" }}>
+                  <CardBody>
+                    <Title headingLevel="h3" style={{ color: "#06c", marginBottom: "1rem" }}>
+                      Validation Status
+                    </Title>
+                    {Math.abs(
+                      blendComposition.reduce(
+                        (sum, item) => sum + item.value,
+                        0
+                      ) - 100
+                    ) < 1 ? (
+                      <Alert variant={AlertVariant.success} title="✓ Total proportion equals 100% - Blend is valid!" />
+                    ) : (
+                      <Alert
+                        variant={AlertVariant.warning}
+                        title={`⚠ Total proportion is ${blendComposition
+                          .reduce((sum, item) => sum + item.value, 0)
+                          .toFixed(2)}% - Should equal 100%`}
+                      />
+                    )}
+                  </CardBody>
+                </Card>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <ImportDialog
         open={openImportDialog}

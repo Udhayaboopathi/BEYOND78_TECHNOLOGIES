@@ -1,30 +1,21 @@
 import { useState, useEffect } from "react";
 import {
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  CircularProgress,
-  Alert,
+  Title,
   Button,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Box,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-  SelectChangeEvent,
-} from "@mui/material";
-import { Add, Edit, Delete } from "@mui/icons-material";
+  Modal,
+  ModalVariant,
+  TextInput,
+  FormGroup,
+  FormSelect,
+  FormSelectOption,
+  Alert,
+  AlertVariant,
+  Spinner,
+  ActionList,
+  ActionListItem,
+} from "@patternfly/react-core";
+import { PlusCircleIcon, TrashIcon } from "@patternfly/react-icons";
+import { DataTable, Column } from "./DataTable";
 import ExportButton from "./ExportButton";
 import {
   getBlendComponents,
@@ -218,9 +209,8 @@ const BlendComponents: React.FC = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>) => {
-    const { name, value } = e.target;
-    setCurrentComponent((prev) => ({ ...prev, [name as string]: value }));
+  const handleInputChange = (value: string, name: string) => {
+    setCurrentComponent((prev) => ({ ...prev, [name]: value }));
 
     // Auto-populate dependent data when commodity changes
     if (name === "commodity_id" && value) {
@@ -233,193 +223,196 @@ const BlendComponents: React.FC = () => {
     }
   };
 
-  if (loading) return <CircularProgress />;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  if (loading) return <Spinner />;
+  if (error) return <Alert variant={AlertVariant.danger} title={error} />;
+
+  const columns: Column[] = [
+    { key: 'id', title: 'ID' },
+    { key: 'blend', title: 'Blend' },
+    { key: 'commodity', title: 'Commodity' },
+    { key: 'proportion', title: 'Proportion' },
+  ];
+
+  const renderCell = (component: BlendComponent, columnKey: string) => {
+    switch (columnKey) {
+      case 'blend':
+        return component.blend?.name || `ID: ${component.blend_id}`;
+      case 'commodity':
+        return component.commodity?.name || `ID: ${component.commodity_id}`;
+      default:
+        return (component as any)[columnKey];
+    }
+  };
 
   return (
     <div>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1rem",
+        }}
       >
-        <Typography variant="h4">Blend Components</Typography>
-        <Box display="flex" gap={2}>
-          <ExportButton
-            onExport={exportBlendComponents}
-            filename="blend_components.csv"
-            label="Export Blend Components"
-          />
+        <Title headingLevel="h1">Blend Components</Title>
+      </div>
+
+      <DataTable
+        data={components}
+        columns={columns}
+        getRowId={(component) => component.id || 0}
+        onEdit={handleOpenDialog}
+        onDelete={(component) => handleDelete(component.id)}
+        renderCell={renderCell}
+        bulkActions={(selectedIds) => (
           <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
+            variant="danger"
+            icon={<TrashIcon />}
+            onClick={() => {
+              if (window.confirm(`Delete ${selectedIds.length} selected blend components?`)) {
+                selectedIds.forEach(id => handleDelete(id as number));
+              }
+            }}
           >
-            Add Component
+            Delete Selected ({selectedIds.length})
           </Button>
-        </Box>
-      </Box>
+        )}
+        actions={
+          <ActionList>
+            <ActionListItem>
+              <ExportButton
+                onExport={exportBlendComponents}
+                filename="blend_components.csv"
+                label="Export"
+              />
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="primary"
+                icon={<PlusCircleIcon />}
+                onClick={() => handleOpenDialog()}
+              >
+                Add Component
+              </Button>
+            </ActionListItem>
+          </ActionList>
+        }
+      />
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Blend</TableCell>
-              <TableCell>Commodity</TableCell>
-              <TableCell>Proportion</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {components.map((component) => (
-              <TableRow key={component.id}>
-                <TableCell>{component.id}</TableCell>
-                <TableCell>
-                  {component.blend?.name || `ID: ${component.blend_id}`}
-                </TableCell>
-                <TableCell>
-                  {component.commodity?.name || `ID: ${component.commodity_id}`}
-                </TableCell>
-                <TableCell>{component.proportion}</TableCell>
-                <TableCell>
-                  <IconButton
-                    color="primary"
-                    onClick={() => handleOpenDialog(component)}
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    color="error"
-                    onClick={() => handleDelete(component.id)}
-                  >
-                    <Delete />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <Dialog
-        open={openDialog}
+      <Modal
+        variant={ModalVariant.medium}
+        title={editMode ? "Edit Blend Component" : "Add Blend Component"}
+        isOpen={openDialog}
         onClose={handleCloseDialog}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          {editMode ? "Edit Blend Component" : "Add Blend Component"}
-        </DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Blend</InputLabel>
-            <Select
-              name="blend_id"
-              value={currentComponent.blend_id}
-              onChange={handleInputChange}
-              label="Blend"
-            >
-              {blends.map((blend) => (
-                <MenuItem key={blend.id} value={blend.id}>
-                  {blend.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* Proportion Total Display */}
-          {currentComponent.blend_id && (
-            <Alert severity="info" sx={{ mt: 2 }}>
-              <strong>Current Total for this Blend:</strong>{" "}
-              {(proportionTotal * 100).toFixed(2)}%
-              <br />
-              <strong>Remaining:</strong>{" "}
-              {((1 - proportionTotal) * 100).toFixed(2)}%
-            </Alert>
-          )}
-
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Commodity</InputLabel>
-            <Select
-              name="commodity_id"
-              value={currentComponent.commodity_id}
-              onChange={handleInputChange}
-              label="Commodity"
-            >
-              {commodities.map((commodity) => (
-                <MenuItem key={commodity.id} value={commodity.id}>
-                  {commodity.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* Auto-populated Read-Only Commodity Details */}
-          {commodityDetails && (
-            <Box
-              sx={{ bgcolor: "#f5f5f5", p: 2, borderRadius: 1, mt: 2, mb: 2 }}
-            >
-              <Typography variant="subtitle2" color="primary" gutterBottom>
-                Commodity Details (Read-Only)
-              </Typography>
-              <TextField
-                fullWidth
-                margin="dense"
-                label="Commodity Name"
-                value={commodityDetails.name || ""}
-                disabled
-                size="small"
-              />
-              <TextField
-                fullWidth
-                margin="dense"
-                label="Density"
-                value={commodityDetails.density || ""}
-                disabled
-                size="small"
-              />
-              <TextField
-                fullWidth
-                margin="dense"
-                label="UOM"
-                value={commodityDetails.uom || ""}
-                disabled
-                size="small"
-              />
-            </Box>
-          )}
-
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Proportion (0-1, e.g., 0.5 for 50%)"
-            name="proportion"
-            type="number"
-            inputProps={{ step: "0.01", min: "0", max: "1" }}
-            value={currentComponent.proportion}
-            onChange={handleInputChange}
-            helperText={`Enter proportion as decimal (0-1). Currently entered: ${(
-              parseFloat(currentComponent.proportion || '0') * 100
-            ).toFixed(2)}%`}
-            required
-          />
-
-          {validationError && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {validationError}
-            </Alert>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" color="primary">
+        actions={[
+          <Button key="save" variant="primary" onClick={handleSave}>
             {editMode ? "Update" : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </Button>,
+          <Button key="cancel" variant="link" onClick={handleCloseDialog}>
+            Cancel
+          </Button>,
+        ]}
+      >
+        <FormGroup label="Blend" isRequired fieldId="blend_id">
+          <FormSelect
+            value={currentComponent.blend_id}
+            onChange={(event, value) => handleInputChange(value, "blend_id")}
+            aria-label="Blend"
+          >
+            <FormSelectOption key="placeholder" value="" label="Select blend" isDisabled />
+            {blends.map((blend) => (
+              <FormSelectOption
+                key={blend.id}
+                value={blend.id}
+                label={blend.name}
+              />
+            ))}
+          </FormSelect>
+        </FormGroup>
+
+        {/* Proportion Total Display */}
+        {currentComponent.blend_id && (
+          <Alert
+            variant={AlertVariant.info}
+            title={`Current Total for this Blend: ${(proportionTotal * 100).toFixed(2)}% - Remaining: ${((1 - proportionTotal) * 100).toFixed(2)}%`}
+            style={{ marginTop: "1rem" }}
+          />
+        )}
+
+        <FormGroup label="Commodity" isRequired fieldId="commodity_id">
+          <FormSelect
+            value={currentComponent.commodity_id}
+            onChange={(event, value) => handleInputChange(value, "commodity_id")}
+            aria-label="Commodity"
+          >
+            <FormSelectOption key="placeholder" value="" label="Select commodity" isDisabled />
+            {commodities.map((commodity) => (
+              <FormSelectOption
+                key={commodity.id}
+                value={commodity.id}
+                label={commodity.name}
+              />
+            ))}
+          </FormSelect>
+        </FormGroup>
+
+        {/* Auto-populated Read-Only Commodity Details */}
+        {commodityDetails && (
+          <div
+            style={{ backgroundColor: "#f5f5f5", padding: "1rem", borderRadius: "4px", marginTop: "1rem", marginBottom: "1rem" }}
+          >
+            <Title headingLevel="h6" style={{ color: "#06c", marginBottom: "0.5rem" }}>
+              Commodity Details (Read-Only)
+            </Title>
+            <FormGroup label="Commodity Name" fieldId="commodity_name_readonly">
+              <TextInput
+                type="text"
+                id="commodity_name_readonly"
+                value={commodityDetails.name || ""}
+                isDisabled
+              />
+            </FormGroup>
+            <FormGroup label="Density" fieldId="density_readonly">
+              <TextInput
+                type="text"
+                id="density_readonly"
+                value={commodityDetails.density || ""}
+                isDisabled
+              />
+            </FormGroup>
+            <FormGroup label="UOM" fieldId="uom_readonly">
+              <TextInput
+                type="text"
+                id="uom_readonly"
+                value={commodityDetails.uom || ""}
+                isDisabled
+              />
+            </FormGroup>
+          </div>
+        )}
+
+        <FormGroup
+          label="Proportion (0-1, e.g., 0.5 for 50%)"
+          isRequired
+          fieldId="proportion"
+          helperText={`Enter proportion as decimal (0-1). Currently entered: ${(
+            parseFloat(currentComponent.proportion || '0') * 100
+          ).toFixed(2)}%`}
+        >
+          <TextInput
+            isRequired
+            type="number"
+            id="proportion"
+            name="proportion"
+            value={currentComponent.proportion}
+            onChange={(event, value) => handleInputChange(value, "proportion")}
+          />
+        </FormGroup>
+
+        {validationError && (
+          <Alert variant={AlertVariant.danger} title={validationError} style={{ marginTop: "1rem" }} />
+        )}
+      </Modal>
     </div>
   );
 };

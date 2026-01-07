@@ -1,32 +1,24 @@
 import React, { useState, useEffect } from "react";
 import {
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  CircularProgress,
-  Alert,
+  Title,
   Button,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Box,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
+  Modal,
+  ModalVariant,
+  Form,
+  FormGroup,
+  TextInput,
+  TextArea,
   Checkbox,
-  FormControlLabel,
-  SelectChangeEvent,
-} from "@mui/material";
-import { Add, Edit, Delete, Upload } from "@mui/icons-material";
+  Alert,
+  AlertVariant,
+  Spinner,
+  ActionList,
+  ActionListItem,
+  FormSelect,
+  FormSelectOption,
+} from "@patternfly/react-core";
+import { PlusCircleIcon, UploadIcon, TrashIcon } from "@patternfly/react-icons";
+import { DataTable, Column } from "./DataTable";
 import ExportButton from "./ExportButton";
 import EnhancedImportDialog from "./EnhancedImportDialog";
 import {
@@ -153,187 +145,181 @@ const Commodities: React.FC = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent) => {
-    const { name, value } = e.target;
+  const handleInputChange = (value: string, name: string) => {
     setCurrentCommodity((prev: CommodityFormData) => ({
       ...prev,
       [name]: name === "density" ? parseFloat(value) : value,
     }));
   };
 
-  if (loading) return <CircularProgress />;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  if (loading) return <Spinner size="xl" />;
+  if (error) return <Alert variant={AlertVariant.danger} title={error} />;
+
+  const columns: Column[] = [
+    { key: 'id', title: 'ID' },
+    { key: 'name', title: 'Name' },
+    { key: 'description', title: 'Description' },
+    { key: 'uom', title: 'UOM' },
+    { key: 'density', title: 'Density' },
+    { key: 'energy_uom', title: 'Energy UOM' },
+    { key: 'is_active', title: 'Is Active' },
+  ];
+
+  const renderCell = (commodity: Commodity, columnKey: string) => {
+    switch (columnKey) {
+      case 'uom':
+        return commodity.uom?.name || commodity.uom_id;
+      case 'is_active':
+        return commodity.is_active ? 'Yes' : 'No';
+      default:
+        return (commodity as any)[columnKey];
+    }
+  };
 
   return (
     <div>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-      >
-        <Typography variant="h4">Commodities</Typography>
-        <Box display="flex" gap={2}>
-          <ExportButton
-            onExport={exportCommodities}
-            label="Export Commodities"
-          />
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<Upload />}
-            onClick={() => setOpenImportDialog(true)}
-          >
-            Import Commodities
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Add Commodity
-          </Button>
-        </Box>
-      </Box>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+        <Title headingLevel="h1">Commodities</Title>
+      </div>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell>UOM</TableCell>
-              <TableCell>Density</TableCell>
-              <TableCell>Energy UOM</TableCell>
-              <TableCell>Is Active</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {commodities.map((commodity) => (
-              <TableRow key={commodity.id}>
-                <TableCell>{commodity.id}</TableCell>
-                <TableCell>{commodity.name}</TableCell>
-                <TableCell>{commodity.description}</TableCell>
-                <TableCell>{commodity.uom?.name || commodity.uom_id}</TableCell>
-                <TableCell>{commodity.density}</TableCell>
-                <TableCell>{commodity.energy_uom}</TableCell>
-                <TableCell>{commodity.is_active ? "Yes" : "No"}</TableCell>
-                <TableCell>
-                  <IconButton
-                    color="primary"
-                    onClick={() => handleOpenDialog(commodity)}
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    color="error"
-                    onClick={() => handleDelete(commodity.id)}
-                  >
-                    <Delete />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <DataTable
+        data={commodities}
+        columns={columns}
+        getRowId={(commodity) => commodity.id || 0}
+        onEdit={handleOpenDialog}
+        onDelete={(commodity) => handleDelete(commodity.id)}
+        renderCell={renderCell}
+        bulkActions={(selectedIds) => (
+          <Button
+            variant="danger"
+            icon={<TrashIcon />}
+            onClick={() => {
+              if (window.confirm(`Delete ${selectedIds.length} selected commodities?`)) {
+                selectedIds.forEach(id => handleDelete(id as number));
+              }
+            }}
+          >
+            Delete Selected ({selectedIds.length})
+          </Button>
+        )}
+        actions={
+          <ActionList>
+            <ActionListItem>
+              <ExportButton
+                onExport={exportCommodities}
+                label="Export"
+              />
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="secondary"
+                icon={<UploadIcon />}
+                onClick={() => setOpenImportDialog(true)}
+              >
+                Import
+              </Button>
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="primary"
+                icon={<PlusCircleIcon />}
+                onClick={() => handleOpenDialog()}
+              >
+                Add Commodity
+              </Button>
+            </ActionListItem>
+          </ActionList>
+        }
+      />
 
-      <Dialog
-        open={openDialog}
+      <Modal
+        variant={ModalVariant.medium}
+        title={editMode ? "Edit Commodity" : "Add Commodity"}
+        isOpen={openDialog}
         onClose={handleCloseDialog}
-        maxWidth="md"
-        fullWidth
+        actions={[
+          <Button key="save" variant="primary" onClick={handleSave}>
+            {editMode ? "Update" : "Create"}
+          </Button>,
+          <Button key="cancel" variant="link" onClick={handleCloseDialog}>
+            Cancel
+          </Button>,
+        ]}
       >
-        <DialogTitle>
-          {editMode ? "Edit Commodity" : "Add Commodity"}
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Name"
-            name="name"
-            value={currentCommodity.name}
-            onChange={handleInputChange}
-            required
-          />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Description"
-            name="description"
-            value={currentCommodity.description}
-            onChange={handleInputChange}
-            multiline
-            rows={3}
-            required
-          />
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>UOM</InputLabel>
-            <Select
+        <Form>
+          <FormGroup label="Name" isRequired fieldId="name">
+            <TextInput
+              id="name"
+              name="name"
+              value={currentCommodity.name}
+              onChange={(_, value) => handleInputChange(value, "name")}
+              isRequired
+            />
+          </FormGroup>
+          <FormGroup label="Description" isRequired fieldId="description">
+            <TextArea
+              id="description"
+              name="description"
+              value={currentCommodity.description}
+              onChange={(_, value) => handleInputChange(value, "description")}
+              isRequired
+              rows={3}
+            />
+          </FormGroup>
+          <FormGroup label="UOM" isRequired fieldId="uom_id">
+            <FormSelect
+              id="uom_id"
               name="uom_id"
               value={currentCommodity.uom_id.toString()}
-              onChange={handleInputChange}
-              label="UOM"
+              onChange={(_, value) => handleInputChange(value, "uom_id")}
+              isRequired
             >
+              <FormSelectOption key="empty" value="" label="Select UOM" isDisabled />
               {uoms.map((uom) => (
-                <MenuItem key={uom.id} value={uom.id}>
-                  {uom.name}
-                </MenuItem>
+                <FormSelectOption key={uom.id} value={uom.id?.toString() || ""} label={uom.name || ""} />
               ))}
-            </Select>
-          </FormControl>
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Density"
-            name="density"
-            type="number"
-            value={currentCommodity.density}
-            onChange={handleInputChange}
-            required
-          />
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Energy UOM</InputLabel>
-            <Select
+            </FormSelect>
+          </FormGroup>
+          <FormGroup label="Density" isRequired fieldId="density">
+            <TextInput
+              id="density"
+              name="density"
+              type="number"
+              value={currentCommodity.density}
+              onChange={(_, value) => handleInputChange(value, "density")}
+              isRequired
+            />
+          </FormGroup>
+          <FormGroup label="Energy UOM" isRequired fieldId="energy_uom">
+            <FormSelect
+              id="energy_uom"
               name="energy_uom"
               value={currentCommodity.energy_uom}
-              onChange={handleInputChange}
-              label="Energy UOM"
+              onChange={(_, value) => handleInputChange(value, "energy_uom")}
+              isRequired
             >
+              <FormSelectOption key="empty" value="" label="Select Energy UOM" isDisabled />
               {uoms.map((uom) => (
-                <MenuItem key={uom.id} value={uom.name}>
-                  {uom.name}
-                </MenuItem>
+                <FormSelectOption key={uom.id} value={uom.name || ""} label={uom.name || ""} />
               ))}
-            </Select>
-          </FormControl>{" "}
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={currentCommodity.is_active}
-                onChange={(e) =>
-                  setCurrentCommodity((prev: CommodityFormData) => ({
-                    ...prev,
-                    is_active: e.target.checked,
-                  }))
-                }
-                name="is_active"
-              />
-            }
-            label="Is Active"
-          />{" "}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" color="primary">
-            {editMode ? "Update" : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            </FormSelect>
+          </FormGroup>
+          <FormGroup fieldId="is_active">
+            <Checkbox
+              id="is_active"
+              name="is_active"
+              label="Is Active"
+              isChecked={currentCommodity.is_active}
+              onChange={(_, checked) =>
+                setCurrentCommodity((prev: CommodityFormData) => ({
+                  ...prev,
+                  is_active: checked,
+                }))
+              }
+            />
+          </FormGroup>
+        </Form>
+      </Modal>
 
       <EnhancedImportDialog
         open={openImportDialog}

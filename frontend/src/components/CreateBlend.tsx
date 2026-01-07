@@ -1,29 +1,28 @@
 import { useState, useEffect } from "react";
 import {
-  Typography,
-  Paper,
-  TextField,
+  Title,
   Button,
-  Box,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
+  TextInput,
+  TextArea,
+  FormGroup,
+  FormSelect,
+  FormSelectOption,
   Alert,
-  Grid,
+  AlertVariant,
   Card,
-  CardContent,
-  Chip,
+  CardBody,
+  Label,
   Divider,
-} from "@mui/material";
-import { Add, Delete, Save, Cancel } from "@mui/icons-material";
+} from "@patternfly/react-core";
+import {
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+} from "@patternfly/react-table";
+import { PlusCircleIcon, TrashIcon, SaveIcon, TimesIcon } from "@patternfly/react-icons";
 import {
   PieChart,
   Pie,
@@ -268,441 +267,422 @@ const CreateBlend: React.FC = () => {
   };
 
   return (
-    <Box p={3}>
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h4" gutterBottom color="primary">
-          Create New Blend
-        </Typography>
-        <Typography variant="body2" color="textSecondary" paragraph>
-          Create a blend by defining its name, description, base commodity, and
-          composition. The total of all proportions must equal exactly 100%.
-        </Typography>
+    <div style={{ padding: "1.5rem" }}>
+      <Card>
+        <CardBody>
+          <Title headingLevel="h1" style={{ color: "#06c", marginBottom: "0.5rem" }}>
+            Create New Blend
+          </Title>
+          <p style={{ color: "#6a6e73", marginBottom: "1.5rem" }}>
+            Create a blend by defining its name, description, base commodity, and
+            composition. The total of all proportions must equal exactly 100%.
+          </p>
 
-        <Divider sx={{ my: 3 }} />
+          <Divider style={{ marginBottom: "1.5rem", marginTop: "1.5rem" }} />
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
+          {error && (
+            <Alert
+              variant={AlertVariant.danger}
+              title={error}
+              actionClose={{
+                onClose: () => setError(null),
+                'aria-label': 'Close error alert',
+              }}
+              style={{ marginBottom: "1.5rem" }}
+            />
+          )}
 
-        <Grid container spacing={3}>
-          {/* Left Column: Blend Information & Components */}
-          <Grid item xs={12} md={7}>
-            <Card variant="outlined" sx={{ mb: 3 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom color="primary">
-                  Blend Information
-                </Typography>
+          <div style={{ display: "grid", gridTemplateColumns: "58% 42%", gap: "1.5rem" }}>
+            {/* Left Column: Blend Information & Components */}
+            <div>
+              <Card style={{ marginBottom: "1.5rem" }}>
+                <CardBody>
+                  <Title headingLevel="h3" style={{ color: "#06c", marginBottom: "1rem" }}>
+                    Blend Information
+                  </Title>
 
-                <TextField
-                  fullWidth
-                  label="Blend Name"
-                  value={blendName}
-                  onChange={(e) => setBlendName(e.target.value)}
-                  error={!!validationErrors.blendName}
-                  helperText={validationErrors.blendName}
-                  required
-                  margin="normal"
-                />
+                  <FormGroup
+                    label="Blend Name"
+                    isRequired
+                    fieldId="blend_name"
+                    validated={validationErrors.blendName ? "error" : "default"}
+                    helperTextInvalid={validationErrors.blendName}
+                  >
+                    <TextInput
+                      isRequired
+                      type="text"
+                      id="blend_name"
+                      value={blendName}
+                      onChange={(event, value) => setBlendName(value)}
+                      validated={validationErrors.blendName ? "error" : "default"}
+                    />
+                  </FormGroup>
 
-                <TextField
-                  fullWidth
-                  label="Blend Description"
-                  value={blendDescription}
-                  onChange={(e) => setBlendDescription(e.target.value)}
-                  error={!!validationErrors.blendDescription}
-                  helperText={validationErrors.blendDescription}
-                  required
-                  margin="normal"
-                  multiline
-                  rows={2}
-                />
+                  <FormGroup
+                    label="Blend Description"
+                    isRequired
+                    fieldId="blend_description"
+                    validated={validationErrors.blendDescription ? "error" : "default"}
+                    helperTextInvalid={validationErrors.blendDescription}
+                  >
+                    <TextArea
+                      isRequired
+                      id="blend_description"
+                      value={blendDescription}
+                      onChange={(event, value) => setBlendDescription(value)}
+                      validated={validationErrors.blendDescription ? "error" : "default"}
+                      rows={2}
+                    />
+                  </FormGroup>
 
-                <FormControl
-                  fullWidth
-                  margin="normal"
-                  required
-                  error={!!validationErrors.baseCommodityId}
-                >
-                  <InputLabel>Base Commodity</InputLabel>
-                  <Select
-                    value={baseCommodityId}
-                    onChange={(e) => setBaseCommodityId(e.target.value)}
+                  <FormGroup
                     label="Base Commodity"
+                    isRequired
+                    fieldId="base_commodity"
+                    validated={validationErrors.baseCommodityId ? "error" : "default"}
+                    helperTextInvalid={validationErrors.baseCommodityId}
                   >
-                    {commodities.map((commodity) => (
-                      <MenuItem key={commodity.id} value={commodity.id}>
-                        {commodity.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {validationErrors.baseCommodityId && (
-                    <Typography
-                      variant="caption"
-                      color="error"
-                      sx={{ mt: 0.5, ml: 1.5 }}
+                    <FormSelect
+                      value={baseCommodityId}
+                      onChange={(event, value) => setBaseCommodityId(value)}
+                      aria-label="Base Commodity"
+                      validated={validationErrors.baseCommodityId ? "error" : "default"}
                     >
-                      {validationErrors.baseCommodityId}
-                    </Typography>
-                  )}
-                </FormControl>
-              </CardContent>
-            </Card>
+                      <FormSelectOption key="placeholder" value="" label="Select base commodity" isDisabled />
+                      {commodities.map((commodity) => (
+                        <FormSelectOption
+                          key={commodity.id}
+                          value={commodity.id}
+                          label={commodity.name}
+                        />
+                      ))}
+                    </FormSelect>
+                  </FormGroup>
+                </CardBody>
+              </Card>
 
-            <Card variant="outlined">
-              <CardContent>
-                <Box
-                  display="flex"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  mb={2}
-                >
-                  <Typography variant="h6" color="primary">
-                    Blend Components
-                  </Typography>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<Add />}
-                    onClick={addComponent}
+              <Card>
+                <CardBody>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "1rem",
+                    }}
                   >
-                    Add Component
-                  </Button>
-                </Box>
+                    <Title headingLevel="h3" style={{ color: "#06c" }}>
+                      Blend Components
+                    </Title>
+                    <Button
+                      variant="secondary"
+                      icon={<PlusCircleIcon />}
+                      onClick={addComponent}
+                    >
+                      Add Component
+                    </Button>
+                  </div>
 
-                {validationErrors.components && (
-                  <Alert severity="error" sx={{ mb: 2 }}>
-                    {validationErrors.components}
-                  </Alert>
-                )}
+                  {validationErrors.components && (
+                    <Alert
+                      variant={AlertVariant.danger}
+                      title={validationErrors.components}
+                      style={{ marginBottom: "1rem" }}
+                    />
+                  )}
 
-                {validationErrors.duplicates && (
-                  <Alert severity="error" sx={{ mb: 2 }}>
-                    {validationErrors.duplicates}
-                  </Alert>
-                )}
+                  {validationErrors.duplicates && (
+                    <Alert
+                      variant={AlertVariant.danger}
+                      title={validationErrors.duplicates}
+                      style={{ marginBottom: "1rem" }}
+                    />
+                  )}
 
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell width="45%">
+                  <Table aria-label="Components table" variant="compact">
+                    <Thead>
+                      <Tr>
+                        <Th width={45}>
                           <strong>Commodity</strong>
-                        </TableCell>
-                        <TableCell width="30%">
+                        </Th>
+                        <Th width={30}>
                           <strong>Proportion</strong>
-                        </TableCell>
-                        <TableCell width="15%" align="right">
+                        </Th>
+                        <Th width={15} modifier="fitContent">
                           <strong>Percentage</strong>
-                        </TableCell>
-                        <TableCell width="10%" align="center">
+                        </Th>
+                        <Th width={10} modifier="fitContent">
                           <strong>Action</strong>
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
+                        </Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
                       {components.map((comp) => (
-                        <TableRow key={comp.id}>
-                          <TableCell>
-                            <FormControl
-                              fullWidth
-                              size="small"
-                              error={
-                                !!validationErrors[
+                        <Tr key={comp.id}>
+                          <Td>
+                            <FormSelect
+                              value={comp.commodity_id}
+                              onChange={(event, value) =>
+                                updateComponent(
+                                  comp.id,
+                                  "commodity_id",
+                                  value
+                                )
+                              }
+                              validated={
+                                validationErrors[
                                   `component_${comp.id}_commodity`
                                 ]
+                                  ? "error"
+                                  : "default"
                               }
+                              aria-label="Select commodity"
                             >
-                              <Select
-                                value={comp.commodity_id}
-                                onChange={(e) =>
-                                  updateComponent(
-                                    comp.id,
-                                    "commodity_id",
-                                    e.target.value
-                                  )
-                                }
-                                displayEmpty
-                              >
-                                <MenuItem value="" disabled>
-                                  Select commodity
-                                </MenuItem>
-                                {commodities.map((commodity) => (
-                                  <MenuItem
-                                    key={commodity.id}
-                                    value={commodity.id}
-                                  >
-                                    {commodity.name}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
+                              <FormSelectOption value="" label="Select commodity" isDisabled />
+                              {commodities.map((commodity) => (
+                                <FormSelectOption
+                                  key={commodity.id}
+                                  value={commodity.id}
+                                  label={commodity.name}
+                                />
+                              ))}
+                            </FormSelect>
                             {validationErrors[
                               `component_${comp.id}_commodity`
                             ] && (
-                              <Typography variant="caption" color="error">
+                              <div style={{ fontSize: "0.75rem", color: "#c9190b", marginTop: "0.25rem" }}>
                                 {
                                   validationErrors[
                                     `component_${comp.id}_commodity`
                                   ]
                                 }
-                              </Typography>
+                              </div>
                             )}
-                          </TableCell>
-                          <TableCell>
-                            <TextField
-                              fullWidth
-                              size="small"
+                          </Td>
+                          <Td>
+                            <TextInput
                               type="number"
-                              inputProps={{ step: "0.01", min: "0", max: "1" }}
                               value={comp.proportion}
-                              onChange={(e) =>
+                              onChange={(event, value) =>
                                 updateComponent(
                                   comp.id,
                                   "proportion",
-                                  e.target.value
+                                  value
                                 )
                               }
                               placeholder="0.00 - 1.00"
-                              error={
-                                !!validationErrors[
-                                  `component_${comp.id}_proportion`
-                                ]
-                              }
-                              helperText={
+                              validated={
                                 validationErrors[
                                   `component_${comp.id}_proportion`
                                 ]
+                                  ? "error"
+                                  : "default"
                               }
                             />
-                          </TableCell>
-                          <TableCell align="right">
-                            <Chip
-                              label={`${(
+                            {validationErrors[
+                              `component_${comp.id}_proportion`
+                            ] && (
+                              <div style={{ fontSize: "0.75rem", color: "#c9190b", marginTop: "0.25rem" }}>
+                                {
+                                  validationErrors[
+                                    `component_${comp.id}_proportion`
+                                  ]
+                                }
+                              </div>
+                            )}
+                          </Td>
+                          <Td modifier="fitContent">
+                            <Label color={comp.proportion ? "blue" : "grey"}>
+                              {(
                                 parseFloat(comp.proportion || '0') * 100
-                              ).toFixed(1)}%`}
-                              size="small"
-                              color={comp.proportion ? "primary" : "default"}
-                            />
-                          </TableCell>
-                          <TableCell align="center">
-                            <IconButton
-                              size="small"
-                              color="error"
+                              ).toFixed(1)}%
+                            </Label>
+                          </Td>
+                          <Td modifier="fitContent">
+                            <Button
+                              variant="plain"
+                              icon={<TrashIcon />}
                               onClick={() => removeComponent(comp.id)}
-                              disabled={components.length === 1}
-                            >
-                              <Delete />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
+                              isDisabled={components.length === 1}
+                              isDanger
+                              aria-label="Delete component"
+                            />
+                          </Td>
+                        </Tr>
                       ))}
-                      <TableRow>
-                        <TableCell colSpan={2} align="right">
+                      <Tr>
+                        <Td colSpan={2}>
                           <strong>Total:</strong>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Chip
-                            label={`${(totalProportion * 100).toFixed(2)}%`}
+                        </Td>
+                        <Td modifier="fitContent">
+                          <Label
                             color={
                               Math.abs(totalProportion - 1.0) < 0.001
-                                ? "success"
-                                : "warning"
+                                ? "green"
+                                : "orange"
                             }
-                          />
-                        </TableCell>
-                        <TableCell />
-                      </TableRow>
-                    </TableBody>
+                          >
+                            {(totalProportion * 100).toFixed(2)}%
+                          </Label>
+                        </Td>
+                        <Td />
+                      </Tr>
+                    </Tbody>
                   </Table>
-                </TableContainer>
 
-                {validationErrors.totalProportion && (
-                  <Alert severity="warning" sx={{ mt: 2 }}>
-                    {validationErrors.totalProportion}
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Right Column: Pie Chart & Validation Status */}
-          <Grid item xs={12} md={5}>
-            <Card variant="outlined" sx={{ mb: 3 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom color="primary">
-                  Composition Preview
-                </Typography>
-                {chartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={chartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={(entry) =>
-                          `${entry.name}: ${entry.value.toFixed(1)}%`
-                        }
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {chartData.map((_entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: any) => `${Number(value).toFixed(2)}%`} />
-                      <Legend verticalAlign="bottom" height={36} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <Alert severity="info">
-                    Add components with proportions to see the pie chart
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" gutterBottom color="primary">
-                  Validation Status
-                </Typography>
-
-                <Box display="flex" flexDirection="column" gap={1}>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    {blendName.trim() ? (
-                      <Chip label="✓ Blend name" color="success" size="small" />
-                    ) : (
-                      <Chip label="✗ Blend name" color="error" size="small" />
-                    )}
-                  </Box>
-
-                  <Box display="flex" alignItems="center" gap={1}>
-                    {blendDescription.trim() ? (
-                      <Chip
-                        label="✓ Description"
-                        color="success"
-                        size="small"
-                      />
-                    ) : (
-                      <Chip label="✗ Description" color="error" size="small" />
-                    )}
-                  </Box>
-
-                  <Box display="flex" alignItems="center" gap={1}>
-                    {baseCommodityId ? (
-                      <Chip
-                        label="✓ Base commodity"
-                        color="success"
-                        size="small"
-                      />
-                    ) : (
-                      <Chip
-                        label="✗ Base commodity"
-                        color="error"
-                        size="small"
-                      />
-                    )}
-                  </Box>
-
-                  <Box display="flex" alignItems="center" gap={1}>
-                    {components.every((c) => c.commodity_id) ? (
-                      <Chip
-                        label="✓ All commodities selected"
-                        color="success"
-                        size="small"
-                      />
-                    ) : (
-                      <Chip
-                        label="✗ Select commodities"
-                        color="error"
-                        size="small"
-                      />
-                    )}
-                  </Box>
-
-                  <Box display="flex" alignItems="center" gap={1}>
-                    {components.every(
-                      (c) => c.proportion && parseFloat(c.proportion) > 0
-                    ) ? (
-                      <Chip
-                        label="✓ All proportions filled"
-                        color="success"
-                        size="small"
-                      />
-                    ) : (
-                      <Chip
-                        label="✗ Fill proportions"
-                        color="error"
-                        size="small"
-                      />
-                    )}
-                  </Box>
-
-                  <Box display="flex" alignItems="center" gap={1}>
-                    {Math.abs(totalProportion - 1.0) < 0.001 ? (
-                      <Chip
-                        label="✓ Total = 100%"
-                        color="success"
-                        size="small"
-                      />
-                    ) : (
-                      <Chip
-                        label={`✗ Total = ${(totalProportion * 100).toFixed(
-                          2
-                        )}%`}
-                        color="error"
-                        size="small"
-                      />
-                    )}
-                  </Box>
-
-                  <Divider sx={{ my: 2 }} />
-
-                  {isFormValid() ? (
-                    <Alert severity="success">
-                      ✓ Ready to submit! All validations passed.
-                    </Alert>
-                  ) : (
-                    <Alert severity="warning">
-                      Please complete all required fields and ensure total
-                      proportion equals 100%
-                    </Alert>
+                  {validationErrors.totalProportion && (
+                    <Alert
+                      variant={AlertVariant.warning}
+                      title={validationErrors.totalProportion}
+                      style={{ marginTop: "1rem" }}
+                    />
                   )}
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+                </CardBody>
+              </Card>
+            </div>
 
-        {/* Action Buttons */}
-        <Box display="flex" justifyContent="flex-end" gap={2} mt={4}>
-          <Button
-            variant="outlined"
-            startIcon={<Cancel />}
-            onClick={handleCancel}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Save />}
-            onClick={handleSubmit}
-            disabled={!isFormValid() || loading}
-          >
-            {loading ? "Creating..." : "Create Blend"}
-          </Button>
-        </Box>
-      </Paper>
-    </Box>
+            {/* Right Column: Pie Chart & Validation Status */}
+            <div>
+              <Card style={{ marginBottom: "1.5rem" }}>
+                <CardBody>
+                  <Title headingLevel="h3" style={{ color: "#06c", marginBottom: "1rem" }}>
+                    Composition Preview
+                  </Title>
+                  {chartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={chartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={(entry) =>
+                            `${entry.name}: ${entry.value.toFixed(1)}%`
+                          }
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {chartData.map((_entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: any) => `${Number(value).toFixed(2)}%`} />
+                        <Legend verticalAlign="bottom" height={36} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <Alert
+                      variant={AlertVariant.info}
+                      title="Add components with proportions to see the pie chart"
+                    />
+                  )}
+                </CardBody>
+              </Card>
+
+              <Card>
+                <CardBody>
+                  <Title headingLevel="h3" style={{ color: "#06c", marginBottom: "1rem" }}>
+                    Validation Status
+                  </Title>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      {blendName.trim() ? (
+                        <Label color="green">✓ Blend name</Label>
+                      ) : (
+                        <Label color="red">✗ Blend name</Label>
+                      )}
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      {blendDescription.trim() ? (
+                        <Label color="green">✓ Description</Label>
+                      ) : (
+                        <Label color="red">✗ Description</Label>
+                      )}
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      {baseCommodityId ? (
+                        <Label color="green">✓ Base commodity</Label>
+                      ) : (
+                        <Label color="red">✗ Base commodity</Label>
+                      )}
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      {components.every((c) => c.commodity_id) ? (
+                        <Label color="green">✓ All commodities selected</Label>
+                      ) : (
+                        <Label color="red">✗ Select commodities</Label>
+                      )}
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      {components.every(
+                        (c) => c.proportion && parseFloat(c.proportion) > 0
+                      ) ? (
+                        <Label color="green">✓ All proportions filled</Label>
+                      ) : (
+                        <Label color="red">✗ Fill proportions</Label>
+                      )}
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      {Math.abs(totalProportion - 1.0) < 0.001 ? (
+                        <Label color="green">✓ Total = 100%</Label>
+                      ) : (
+                        <Label color="red">
+                          ✗ Total = {(totalProportion * 100).toFixed(2)}%
+                        </Label>
+                      )}
+                    </div>
+
+                    <Divider style={{ marginTop: "1rem", marginBottom: "1rem" }} />
+
+                    {isFormValid() ? (
+                      <Alert
+                        variant={AlertVariant.success}
+                        title="✓ Ready to submit! All validations passed."
+                      />
+                    ) : (
+                      <Alert
+                        variant={AlertVariant.warning}
+                        title="Please complete all required fields and ensure total proportion equals 100%"
+                      />
+                    )}
+                  </div>
+                </CardBody>
+              </Card>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "2rem" }}>
+            <Button
+              variant="secondary"
+              icon={<TimesIcon />}
+              onClick={handleCancel}
+              isDisabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              icon={<SaveIcon />}
+              onClick={handleSubmit}
+              isDisabled={!isFormValid() || loading}
+            >
+              {loading ? "Creating..." : "Create Blend"}
+            </Button>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
   );
 };
 

@@ -1,30 +1,21 @@
 import { useState, useEffect } from "react";
 import {
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  CircularProgress,
-  Alert,
+  Title,
   Button,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Box,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-  SelectChangeEvent,
-} from "@mui/material";
-import { Add, Edit, Delete, Upload } from "@mui/icons-material";
+  Modal,
+  ModalVariant,
+  TextInput,
+  FormGroup,
+  FormSelect,
+  FormSelectOption,
+  Alert,
+  AlertVariant,
+  Spinner,
+  ActionList,
+  ActionListItem,
+} from "@patternfly/react-core";
+import { PlusCircleIcon, UploadIcon, TrashIcon } from "@patternfly/react-icons";
+import { DataTable, Column } from "./DataTable";
 import ExportButton from "./ExportButton";
 import EnhancedImportDialog from "./EnhancedImportDialog";
 import {
@@ -139,147 +130,149 @@ const Locations: React.FC = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent) => {
-    const { name, value } = e.target;
+  const handleInputChange = (value: string, name: string) => {
     setCurrentLocation((prev) => ({ ...prev, [name]: value }));
   };
 
-  if (loading) return <CircularProgress />;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  if (loading) return <Spinner />;
+  if (error) return <Alert variant={AlertVariant.danger} title={error} />;
+
+  const columns: Column[] = [
+    { key: 'id', title: 'ID' },
+    { key: 'name', title: 'Name' },
+    { key: 'type', title: 'Type' },
+    { key: 'description', title: 'Description' },
+    { key: 'parent_id', title: 'Parent Counterparty' },
+  ];
+
+  const renderCell = (location: Location, columnKey: string) => {
+    if (columnKey === 'parent_id') {
+      return location.parent_id ? `Parent ID: ${location.parent_id}` : 'N/A';
+    }
+    return (location as any)[columnKey];
+  };
 
   return (
     <div>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1rem",
+        }}
       >
-        <Typography variant="h4">Locations</Typography>
-        <Box display="flex" gap={2}>
-          <ExportButton onExport={exportLocations} label="Export Locations" />
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<Upload />}
-            onClick={() => setOpenImportDialog(true)}
-          >
-            Import Locations
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Add Location
-          </Button>
-        </Box>
-      </Box>
+        <Title headingLevel="h1">Locations</Title>
+      </div>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell>Parent Counterparty</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {locations.map((location) => (
-              <TableRow key={location.id}>
-                <TableCell>{location.id}</TableCell>
-                <TableCell>{location.name}</TableCell>
-                <TableCell>{location.type}</TableCell>
-                <TableCell>{location.description}</TableCell>
-                <TableCell>
-                  {location.parent_id ? `Parent ID: ${location.parent_id}` : "N/A"}
-                </TableCell>
-                <TableCell>
-                  <IconButton
-                    color="primary"
-                    onClick={() => handleOpenDialog(location)}
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    color="error"
-                    onClick={() => handleDelete(location.id)}
-                  >
-                    <Delete />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <DataTable
+        data={locations}
+        columns={columns}
+        getRowId={(location) => location.id || 0}
+        onEdit={handleOpenDialog}
+        onDelete={(location) => handleDelete(location.id)}
+        renderCell={renderCell}
+        bulkActions={(selectedIds) => (
+          <Button
+            variant="danger"
+            icon={<TrashIcon />}
+            onClick={() => {
+              if (window.confirm(`Delete ${selectedIds.length} selected locations?`)) {
+                selectedIds.forEach(id => handleDelete(id as number));
+              }
+            }}
+          >
+            Delete Selected ({selectedIds.length})
+          </Button>
+        )}
+        actions={
+          <ActionList>
+            <ActionListItem>
+              <ExportButton onExport={exportLocations} label="Export" />
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="secondary"
+                icon={<UploadIcon />}
+                onClick={() => setOpenImportDialog(true)}
+              >
+                Import
+              </Button>
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="primary"
+                icon={<PlusCircleIcon />}
+                onClick={() => handleOpenDialog()}
+              >
+                Add Location
+              </Button>
+            </ActionListItem>
+          </ActionList>
+        }
+      />
 
-      <Dialog
-        open={openDialog}
+      <Modal
+        variant={ModalVariant.medium}
+        title={editMode ? "Edit Location" : "Add Location"}
+        isOpen={openDialog}
         onClose={handleCloseDialog}
-        maxWidth="md"
-        fullWidth
+        actions={[
+          <Button key="save" variant="primary" onClick={handleSave}>
+            {editMode ? "Update" : "Create"}
+          </Button>,
+          <Button key="cancel" variant="link" onClick={handleCloseDialog}>
+            Cancel
+          </Button>,
+        ]}
       >
-        <DialogTitle>{editMode ? "Edit Location" : "Add Location"}</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Name"
+        <FormGroup label="Name" isRequired fieldId="name">
+          <TextInput
+            isRequired
+            type="text"
+            id="name"
             name="name"
             value={currentLocation.name}
-            onChange={handleInputChange}
-            required
+            onChange={(event, value) => handleInputChange(value, "name")}
           />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Type"
+        </FormGroup>
+        <FormGroup label="Type" isRequired fieldId="type">
+          <TextInput
+            isRequired
+            type="text"
+            id="type"
             name="type"
             value={currentLocation.type}
-            onChange={handleInputChange}
-            required
+            onChange={(event, value) => handleInputChange(value, "type")}
           />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Description"
+        </FormGroup>
+        <FormGroup label="Description" isRequired fieldId="description">
+          <TextInput
+            isRequired
+            type="text"
+            id="description"
             name="description"
             value={currentLocation.description}
-            onChange={handleInputChange}
-            required
+            onChange={(event, value) => handleInputChange(value, "description")}
           />
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Parent Counterparty</InputLabel>
-            <Select
-              name="parent_contvarcharerpartu_id"
-              value={currentLocation.parent_contvarcharerpartu_id || ''}
-              onChange={(e) => setCurrentLocation((prev) => ({ ...prev, parent_contvarcharerpartu_id: Number(e.target.value) }))}
-              label="Parent Counterparty"
-            >
-              {counterParties.map((cp) => (
-                <MenuItem
-                  key={cp.CounterpartyID}
-                  value={cp.CounterpartyID}
-                >
-                  {cp.LegalName}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" color="primary">
-            {editMode ? "Update" : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </FormGroup>
+        <FormGroup label="Parent Counterparty" isRequired fieldId="parent_contvarcharerpartu_id">
+          <FormSelect
+            value={currentLocation.parent_contvarcharerpartu_id || ''}
+            onChange={(event, value) => setCurrentLocation((prev) => ({ ...prev, parent_contvarcharerpartu_id: Number(value) }))}
+            aria-label="Parent Counterparty"
+          >
+            <FormSelectOption key="placeholder" value="" label="Select a counterparty" isDisabled />
+            {counterParties.map((cp) => (
+              <FormSelectOption
+                key={cp.CounterpartyID}
+                value={cp.CounterpartyID}
+                label={cp.LegalName}
+              />
+            ))}
+          </FormSelect>
+        </FormGroup>
+      </Modal>
 
       <EnhancedImportDialog
         open={openImportDialog}

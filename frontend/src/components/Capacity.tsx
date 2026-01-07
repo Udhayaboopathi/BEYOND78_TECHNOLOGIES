@@ -1,30 +1,21 @@
 import { useState, useEffect } from "react";
 import {
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  CircularProgress,
-  Alert,
+  Title,
   Button,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Box,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-  SelectChangeEvent,
-} from "@mui/material";
-import { Add, Edit, Delete, Upload } from "@mui/icons-material";
+  Modal,
+  ModalVariant,
+  TextInput,
+  FormGroup,
+  FormSelect,
+  FormSelectOption,
+  Alert,
+  AlertVariant,
+  Spinner,
+  ActionList,
+  ActionListItem,
+} from "@patternfly/react-core";
+import { PlusCircleIcon, UploadIcon, TrashIcon } from "@patternfly/react-icons";
+import { DataTable, Column } from "./DataTable";
 import {
   getCapacity,
   createCapacity,
@@ -245,9 +236,8 @@ const Capacity: React.FC = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>) => {
-    const { name, value } = e.target;
-    setCurrentCapacity((prev) => ({ ...prev, [name as string]: value }));
+  const handleInputChange = (value: string, name: string) => {
+    setCurrentCapacity((prev) => ({ ...prev, [name]: value }));
 
     // Auto-populate dependent data when commodity or location changes
     if (name === "commodity_id" && value) {
@@ -258,267 +248,269 @@ const Capacity: React.FC = () => {
     }
   };
 
-  if (loading) return <CircularProgress />;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  if (loading) return <Spinner />;
+  if (error) return <Alert variant={AlertVariant.danger} title={error} />;
+
+  const columns: Column[] = [
+    { key: 'id', title: 'ID' },
+    { key: 'commodity', title: 'Commodity' },
+    { key: 'location', title: 'Location' },
+    { key: 'quantity', title: 'Quantity' },
+    { key: 'uom', title: 'UOM' },
+    { key: 'eff_dt_from', title: 'Effective From' },
+    { key: 'eff_dt_to', title: 'Effective To' },
+    { key: 'dt_last_modified', title: 'Last Modified' },
+  ];
+
+  const renderCell = (item: CapacityType, columnKey: string) => {
+    switch (columnKey) {
+      case 'commodity':
+        return item.commodity?.name || `ID: ${item.commodity_id}`;
+      case 'location':
+        return item.location?.name || `ID: ${item.location_id}`;
+      case 'uom':
+        return item.uom?.name || `ID: ${item.uom_id}`;
+      default:
+        return (item as any)[columnKey];
+    }
+  };
 
   return (
     <div>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1rem",
+        }}
       >
-        <Typography variant="h4">Capacity</Typography>
-        <Box display="flex" gap={2}>
-          <ExportButton onExport={exportCapacity} filename="capacity.csv" label="Export Capacity" />
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<Upload />}
-            onClick={() => setOpenImportDialog(true)}
-          >
-            Import Capacity
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Add Capacity
-          </Button>
-        </Box>
-      </Box>
+        <Title headingLevel="h1">Capacity</Title>
+      </div>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Commodity</TableCell>
-              <TableCell>Location</TableCell>
-              <TableCell>Quantity</TableCell>
-              <TableCell>UOM</TableCell>
-              <TableCell>Effective From</TableCell>
-              <TableCell>Effective To</TableCell>
-              <TableCell>Last Modified</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {capacity.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{item.id}</TableCell>
-                <TableCell>
-                  {item.commodity?.name || `ID: ${item.commodity_id}`}
-                </TableCell>
-                <TableCell>
-                  {item.location?.name || `ID: ${item.location_id}`}
-                </TableCell>
-                <TableCell>{item.quantity}</TableCell>
-                <TableCell>{item.uom?.name || `ID: ${item.uom_id}`}</TableCell>
-                <TableCell>{item.eff_dt_from}</TableCell>
-                <TableCell>{item.eff_dt_to}</TableCell>
-                <TableCell>{item.dt_last_modified}</TableCell>
-                <TableCell>
-                  <IconButton
-                    color="primary"
-                    onClick={() => handleOpenDialog(item)}
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    color="error"
-                    onClick={() => handleDelete(item.id!)}
-                  >
-                    <Delete />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <DataTable
+        data={capacity}
+        columns={columns}
+        getRowId={(item) => item.id || 0}
+        onEdit={handleOpenDialog}
+        onDelete={(item) => handleDelete(item.id!)}
+        renderCell={renderCell}
+        bulkActions={(selectedIds) => (
+          <Button
+            variant="danger"
+            icon={<TrashIcon />}
+            onClick={() => {
+              if (window.confirm(`Delete ${selectedIds.length} selected capacity records?`)) {
+                selectedIds.forEach(id => handleDelete(id as number));
+              }
+            }}
+          >
+            Delete Selected ({selectedIds.length})
+          </Button>
+        )}
+        actions={
+          <ActionList>
+            <ActionListItem>
+              <ExportButton onExport={exportCapacity} filename="capacity.csv" label="Export" />
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="secondary"
+                icon={<UploadIcon />}
+                onClick={() => setOpenImportDialog(true)}
+              >
+                Import
+              </Button>
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="primary"
+                icon={<PlusCircleIcon />}
+                onClick={() => handleOpenDialog()}
+              >
+                Add Capacity
+              </Button>
+            </ActionListItem>
+          </ActionList>
+        }
+      />
 
-      <Dialog
-        open={openDialog}
+      <Modal
+        variant={ModalVariant.medium}
+        title={editMode ? "Edit Capacity" : "Add Capacity"}
+        isOpen={openDialog}
         onClose={handleCloseDialog}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>{editMode ? "Edit Capacity" : "Add Capacity"}</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Commodity</InputLabel>
-            <Select
-              name="commodity_id"
-              value={currentCapacity.commodity_id}
-              onChange={handleInputChange}
-              label="Commodity"
-            >
-              {commodities.map((commodity) => (
-                <MenuItem key={commodity.id} value={commodity.id}>
-                  {commodity.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* Auto-populated Read-Only Commodity Details */}
-          {commodityDetails && (
-            <Box
-              sx={{ bgcolor: "#f5f5f5", p: 2, borderRadius: 1, mt: 2, mb: 2 }}
-            >
-              <Typography variant="subtitle2" color="primary" gutterBottom>
-                Commodity Details (Read-Only)
-              </Typography>
-              <TextField
-                fullWidth
-                margin="dense"
-                label="Commodity Name"
-                value={commodityDetails.name || ""}
-                disabled
-                size="small"
-              />
-              <TextField
-                fullWidth
-                margin="dense"
-                label="Density"
-                value={commodityDetails.density || ""}
-                disabled
-                size="small"
-              />
-              <TextField
-                fullWidth
-                margin="dense"
-                label="UOM"
-                value={commodityDetails.uom || ""}
-                disabled
-                size="small"
-              />
-              <TextField
-                fullWidth
-                margin="dense"
-                label="Energy UOM"
-                value={commodityDetails.energy_uom || ""}
-                disabled
-                size="small"
-              />
-            </Box>
-          )}
-
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Location</InputLabel>
-            <Select
-              name="location_id"
-              value={currentCapacity.location_id}
-              onChange={handleInputChange}
-              label="Location"
-            >
-              {locations.map((location) => (
-                <MenuItem key={location.id} value={location.id}>
-                  {location.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* Auto-populated Read-Only Location Details */}
-          {locationDetails && (
-            <Box
-              sx={{ bgcolor: "#f5f5f5", p: 2, borderRadius: 1, mt: 2, mb: 2 }}
-            >
-              <Typography variant="subtitle2" color="primary" gutterBottom>
-                Location Details (Read-Only)
-              </Typography>
-              <TextField
-                fullWidth
-                margin="dense"
-                label="Location Name"
-                value={locationDetails.name || ""}
-                disabled
-                size="small"
-              />
-              <TextField
-                fullWidth
-                margin="dense"
-                label="Location Type"
-                value={locationDetails.type || ""}
-                disabled
-                size="small"
-              />
-              <TextField
-                fullWidth
-                margin="dense"
-                label="Description"
-                value={locationDetails.description || ""}
-                disabled
-                size="small"
-              />
-            </Box>
-          )}
-
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Capacity Value"
-            name="capacity_value"
-            type="number"
-            value={currentCapacity.capacity_value}
-            onChange={handleInputChange}
-            required
-          />
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Capacity UOM</InputLabel>
-            <Select
-              name="capacity_uom"
-              value={currentCapacity.capacity_uom}
-              onChange={handleInputChange}
-              label="Capacity UOM"
-            >
-              {uoms.map((uom) => (
-                <MenuItem key={uom.id} value={uom.id}>
-                  {uom.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Effective From"
-            name="effective_from"
-            type="date"
-            value={currentCapacity.effective_from}
-            onChange={handleInputChange}
-            InputLabelProps={{ shrink: true }}
-            required
-          />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Effective To"
-            name="effective_to"
-            type="date"
-            value={currentCapacity.effective_to}
-            onChange={handleInputChange}
-            InputLabelProps={{ shrink: true }}
-            required
-          />
-          {validationError && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {validationError}
-            </Alert>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" color="primary">
+        actions={[
+          <Button key="save" variant="primary" onClick={handleSave}>
             {editMode ? "Update" : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </Button>,
+          <Button key="cancel" variant="link" onClick={handleCloseDialog}>
+            Cancel
+          </Button>,
+        ]}
+      >
+        <FormGroup label="Commodity" isRequired fieldId="commodity_id">
+          <FormSelect
+            value={currentCapacity.commodity_id}
+            onChange={(event, value) => handleInputChange(value, "commodity_id")}
+            aria-label="Commodity"
+          >
+            <FormSelectOption key="placeholder" value="" label="Select commodity" isDisabled />
+            {commodities.map((commodity) => (
+              <FormSelectOption
+                key={commodity.id}
+                value={commodity.id}
+                label={commodity.name}
+              />
+            ))}
+          </FormSelect>
+        </FormGroup>
+
+        {/* Auto-populated Read-Only Commodity Details */}
+        {commodityDetails && (
+          <div
+            style={{ backgroundColor: "#f5f5f5", padding: "1rem", borderRadius: "4px", marginTop: "1rem", marginBottom: "1rem" }}
+          >
+            <Title headingLevel="h6" style={{ color: "#06c", marginBottom: "0.5rem" }}>
+              Commodity Details (Read-Only)
+            </Title>
+            <FormGroup label="Commodity Name" fieldId="commodity_name_readonly">
+              <TextInput
+                type="text"
+                id="commodity_name_readonly"
+                value={commodityDetails.name || ""}
+                isDisabled
+              />
+            </FormGroup>
+            <FormGroup label="Density" fieldId="density_readonly">
+              <TextInput
+                type="text"
+                id="density_readonly"
+                value={commodityDetails.density || ""}
+                isDisabled
+              />
+            </FormGroup>
+            <FormGroup label="UOM" fieldId="uom_readonly">
+              <TextInput
+                type="text"
+                id="uom_readonly"
+                value={commodityDetails.uom || ""}
+                isDisabled
+              />
+            </FormGroup>
+            <FormGroup label="Energy UOM" fieldId="energy_uom_readonly">
+              <TextInput
+                type="text"
+                id="energy_uom_readonly"
+                value={commodityDetails.energy_uom || ""}
+                isDisabled
+              />
+            </FormGroup>
+          </div>
+        )}
+
+        <FormGroup label="Location" isRequired fieldId="location_id">
+          <FormSelect
+            value={currentCapacity.location_id}
+            onChange={(event, value) => handleInputChange(value, "location_id")}
+            aria-label="Location"
+          >
+            <FormSelectOption key="placeholder" value="" label="Select location" isDisabled />
+            {locations.map((location) => (
+              <FormSelectOption
+                key={location.id}
+                value={location.id}
+                label={location.name}
+              />
+            ))}
+          </FormSelect>
+        </FormGroup>
+
+        {/* Auto-populated Read-Only Location Details */}
+        {locationDetails && (
+          <div
+            style={{ backgroundColor: "#f5f5f5", padding: "1rem", borderRadius: "4px", marginTop: "1rem", marginBottom: "1rem" }}
+          >
+            <Title headingLevel="h6" style={{ color: "#06c", marginBottom: "0.5rem" }}>
+              Location Details (Read-Only)
+            </Title>
+            <FormGroup label="Location Name" fieldId="location_name_readonly">
+              <TextInput
+                type="text"
+                id="location_name_readonly"
+                value={locationDetails.name || ""}
+                isDisabled
+              />
+            </FormGroup>
+            <FormGroup label="Location Type" fieldId="location_type_readonly">
+              <TextInput
+                type="text"
+                id="location_type_readonly"
+                value={locationDetails.type || ""}
+                isDisabled
+              />
+            </FormGroup>
+            <FormGroup label="Description" fieldId="location_description_readonly">
+              <TextInput
+                type="text"
+                id="location_description_readonly"
+                value={locationDetails.description || ""}
+                isDisabled
+              />
+            </FormGroup>
+          </div>
+        )}
+
+        <FormGroup label="Capacity Value" isRequired fieldId="capacity_value">
+          <TextInput
+            isRequired
+            type="number"
+            id="capacity_value"
+            name="capacity_value"
+            value={currentCapacity.capacity_value}
+            onChange={(event, value) => handleInputChange(value, "capacity_value")}
+          />
+        </FormGroup>
+        <FormGroup label="Capacity UOM" isRequired fieldId="capacity_uom">
+          <FormSelect
+            value={currentCapacity.capacity_uom}
+            onChange={(event, value) => handleInputChange(value, "capacity_uom")}
+            aria-label="Capacity UOM"
+          >
+            <FormSelectOption key="placeholder" value="" label="Select UOM" isDisabled />
+            {uoms.map((uom) => (
+              <FormSelectOption
+                key={uom.id}
+                value={uom.id}
+                label={uom.name}
+              />
+            ))}
+          </FormSelect>
+        </FormGroup>
+        <FormGroup label="Effective From" isRequired fieldId="effective_from">
+          <TextInput
+            isRequired
+            type="date"
+            id="effective_from"
+            name="effective_from"
+            value={currentCapacity.effective_from}
+            onChange={(event, value) => handleInputChange(value, "effective_from")}
+          />
+        </FormGroup>
+        <FormGroup label="Effective To" isRequired fieldId="effective_to">
+          <TextInput
+            isRequired
+            type="date"
+            id="effective_to"
+            name="effective_to"
+            value={currentCapacity.effective_to}
+            onChange={(event, value) => handleInputChange(value, "effective_to")}
+          />
+        </FormGroup>
+        {validationError && (
+          <Alert variant={AlertVariant.danger} title={validationError} style={{ marginTop: "1rem" }} />
+        )}
+      </Modal>
 
       <ImportDialog
         open={openImportDialog}

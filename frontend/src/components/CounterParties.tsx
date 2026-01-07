@@ -1,29 +1,21 @@
 import { useState, useEffect } from "react";
 import {
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  CircularProgress,
-  Alert,
+  Title,
   Button,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Box,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-} from "@mui/material";
-import { Add, Edit, Delete, Upload } from "@mui/icons-material";
+  Modal,
+  ModalVariant,
+  TextInput,
+  FormGroup,
+  FormSelect,
+  FormSelectOption,
+  Alert,
+  AlertVariant,
+  Spinner,
+  ActionList,
+  ActionListItem,
+} from "@patternfly/react-core";
+import { PlusCircleIcon, UploadIcon, TrashIcon } from "@patternfly/react-icons";
+import { DataTable, Column } from "./DataTable";
 import ExportButton from "./ExportButton";
 import EnhancedImportDialog from "./EnhancedImportDialog";
 import {
@@ -139,181 +131,183 @@ const CounterParties: React.FC = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+  const handleInputChange = (value: string, name: string) => {
     setCurrentParty((prev) => ({ ...prev, [name]: value }));
   };
 
-  if (loading) return <CircularProgress />;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  if (loading) return <Spinner />;
+  if (error) return <Alert variant={AlertVariant.danger} title={error} />;
+
+  const columns: Column[] = [
+    { key: 'id', title: 'ID' },
+    { key: 'legal_name', title: 'Legal Name' },
+    { key: 'short_name', title: 'Short Name' },
+    { key: 'counterparty_code', title: 'Code' },
+    { key: 'country', title: 'Country' },
+    { key: 'type', title: 'Type' },
+    { key: 'credit_status', title: 'Credit Status' },
+    { key: 'credit_limit', title: 'Credit Limit' },
+  ];
+
+  const renderCell = (party: CounterParty, columnKey: string) => {
+    if (columnKey === 'credit_limit') {
+      return `$${party.credit_limit?.toLocaleString()}`;
+    }
+    return (party as any)[columnKey];
+  };
 
   return (
     <div>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1rem",
+        }}
       >
-        <Typography variant="h4">Counter Parties</Typography>
-        <Box display="flex" gap={2}>
-          <ExportButton
-            onExport={exportCounterParties}
-            label="Export Counter Parties"
-          />
-          <Button
-            variant="outlined"
-            color="secondary"
-            startIcon={<Upload />}
-            onClick={() => setOpenImportDialog(true)}
-          >
-            Import Counter Parties
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Add Counter Party
-          </Button>
-        </Box>
-      </Box>
+        <Title headingLevel="h1">Counter Parties</Title>
+      </div>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Legal Name</TableCell>
-              <TableCell>Short Name</TableCell>
-              <TableCell>Code</TableCell>
-              <TableCell>Country</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Credit Status</TableCell>
-              <TableCell>Credit Limit</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {parties.map((party) => (
-              <TableRow key={party.id}>
-                <TableCell>{party.id}</TableCell>
-                <TableCell>{party.legal_name}</TableCell>
-                <TableCell>{party.short_name}</TableCell>
-                <TableCell>{party.counterparty_code}</TableCell>
-                <TableCell>{party.country}</TableCell>
-                <TableCell>{party.type}</TableCell>
-                <TableCell>{party.credit_status}</TableCell>
-                <TableCell>${party.credit_limit?.toLocaleString()}</TableCell>
-                <TableCell>
-                  <IconButton
-                    color="primary"
-                    onClick={() => handleOpenDialog(party)}
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    color="error"
-                    onClick={() => handleDelete(party.id!)}
-                  >
-                    <Delete />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <DataTable
+        data={parties}
+        columns={columns}
+        getRowId={(party) => party.id || 0}
+        onEdit={handleOpenDialog}
+        onDelete={(party) => handleDelete(party.id!)}
+        renderCell={renderCell}
+        bulkActions={(selectedIds) => (
+          <Button
+            variant="danger"
+            icon={<TrashIcon />}
+            onClick={() => {
+              if (window.confirm(`Delete ${selectedIds.length} selected counter parties?`)) {
+                selectedIds.forEach(id => handleDelete(id as number));
+              }
+            }}
+          >
+            Delete Selected ({selectedIds.length})
+          </Button>
+        )}
+        actions={
+          <ActionList>
+            <ActionListItem>
+              <ExportButton
+                onExport={exportCounterParties}
+                label="Export"
+              />
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="secondary"
+                icon={<UploadIcon />}
+                onClick={() => setOpenImportDialog(true)}
+              >
+                Import
+              </Button>
+            </ActionListItem>
+            <ActionListItem>
+              <Button
+                variant="primary"
+                icon={<PlusCircleIcon />}
+                onClick={() => handleOpenDialog()}
+              >
+                Add Counter Party
+              </Button>
+            </ActionListItem>
+          </ActionList>
+        }
+      />
 
-      <Dialog
-        open={openDialog}
+      <Modal
+        variant={ModalVariant.medium}
+        title={editMode ? "Edit Counter Party" : "Add Counter Party"}
+        isOpen={openDialog}
         onClose={handleCloseDialog}
-        maxWidth="md"
-        fullWidth
+        actions={[
+          <Button key="save" variant="primary" onClick={handleSave}>
+            {editMode ? "Update" : "Create"}
+          </Button>,
+          <Button key="cancel" variant="link" onClick={handleCloseDialog}>
+            Cancel
+          </Button>,
+        ]}
       >
-        <DialogTitle>
-          {editMode ? "Edit Counter Party" : "Add Counter Party"}
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Legal Name"
+        <FormGroup label="Legal Name" isRequired fieldId="legal_name">
+          <TextInput
+            isRequired
+            type="text"
+            id="legal_name"
             name="legal_name"
             value={currentParty.legal_name}
-            onChange={handleInputChange}
-            required
+            onChange={(event, value) => handleInputChange(value, "legal_name")}
           />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Short Name"
+        </FormGroup>
+        <FormGroup label="Short Name" isRequired fieldId="short_name">
+          <TextInput
+            isRequired
+            type="text"
+            id="short_name"
             name="short_name"
             value={currentParty.short_name}
-            onChange={handleInputChange}
-            required
+            onChange={(event, value) => handleInputChange(value, "short_name")}
           />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Code"
+        </FormGroup>
+        <FormGroup label="Code" isRequired fieldId="counterparty_code">
+          <TextInput
+            isRequired
+            type="text"
+            id="counterparty_code"
             name="counterparty_code"
             value={currentParty.counterparty_code}
-            onChange={handleInputChange}
-            required
+            onChange={(event, value) => handleInputChange(value, "counterparty_code")}
           />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Country"
+        </FormGroup>
+        <FormGroup label="Country" isRequired fieldId="country">
+          <TextInput
+            isRequired
+            type="text"
+            id="country"
             name="country"
             value={currentParty.country}
-            onChange={handleInputChange}
-            required
+            onChange={(event, value) => handleInputChange(value, "country")}
           />
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Type"
+        </FormGroup>
+        <FormGroup label="Type" isRequired fieldId="type">
+          <TextInput
+            isRequired
+            type="text"
+            id="type"
             name="type"
             value={currentParty.type}
-            onChange={handleInputChange}
-            required
+            onChange={(event, value) => handleInputChange(value, "type")}
           />
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Credit Status</InputLabel>
-            <Select
-              name="credit_status"
-              value={currentParty.credit_status}
-              onChange={(e) => setCurrentParty((prev) => ({ ...prev, credit_status: e.target.value }))}
-              label="Credit Status"
-            >
-              <MenuItem value="Approved">Approved</MenuItem>
-              <MenuItem value="Under Review">Under Review</MenuItem>
-              <MenuItem value="Suspended">Suspended</MenuItem>
-              <MenuItem value="Rejected">Rejected</MenuItem>
-              <MenuItem value="Pending">Pending</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Credit Limit"
-            name="credit_limit"
+        </FormGroup>
+        <FormGroup label="Credit Status" isRequired fieldId="credit_status">
+          <FormSelect
+            value={currentParty.credit_status}
+            onChange={(event, value) => setCurrentParty((prev) => ({ ...prev, credit_status: value }))}
+            aria-label="Credit Status"
+          >
+            <FormSelectOption key="placeholder" value="" label="Select status" isDisabled />
+            <FormSelectOption value="Approved" label="Approved" />
+            <FormSelectOption value="Under Review" label="Under Review" />
+            <FormSelectOption value="Suspended" label="Suspended" />
+            <FormSelectOption value="Rejected" label="Rejected" />
+            <FormSelectOption value="Pending" label="Pending" />
+          </FormSelect>
+        </FormGroup>
+        <FormGroup label="Credit Limit" isRequired fieldId="credit_limit">
+          <TextInput
+            isRequired
             type="number"
+            id="credit_limit"
+            name="credit_limit"
             value={currentParty.credit_limit}
-            onChange={handleInputChange}
-            required
+            onChange={(event, value) => handleInputChange(value, "credit_limit")}
           />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" color="primary">
-            {editMode ? "Update" : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </FormGroup>
+      </Modal>
 
       <EnhancedImportDialog
         open={openImportDialog}

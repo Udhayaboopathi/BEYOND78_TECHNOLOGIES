@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Button, CircularProgress, ButtonProps } from "@mui/material";
-import { Download } from "@mui/icons-material";
+import { Button, Spinner } from "@patternfly/react-core";
+import { DownloadIcon } from "@patternfly/react-icons";
 import { ExportButtonProps } from "../types";
 
-const ExportButton: React.FC<ExportButtonProps & Omit<ButtonProps, 'onClick'>> = ({ onExport, label = "Export", ...props }) => {
+const ExportButton: React.FC<ExportButtonProps> = ({ onExport, label = "Export" }) => {
   const [exporting, setExporting] = useState<boolean>(false);
 
   const handleExport = async () => {
@@ -45,12 +45,10 @@ const ExportButton: React.FC<ExportButtonProps & Omit<ButtonProps, 'onClick'>> =
 
   return (
     <Button
-      variant="outlined"
-      color="primary"
-      startIcon={exporting ? <CircularProgress size={16} /> : <Download />}
+      variant="secondary"
+      icon={exporting ? <Spinner size="md" /> : <DownloadIcon />}
       onClick={handleExport}
-      disabled={exporting}
-      {...props}
+      isDisabled={exporting}
     >
       {exporting ? "Exporting..." : label}
     </Button>
